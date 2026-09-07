@@ -1,42 +1,68 @@
-3D SKAK - DELBAR BROWSERVERSION (FEN-FIX)
-=========================================
+3D SKAK · EMILIAN
+================
 
-Denne version kræver ingen Homebrew, Terminal eller lokal Stockfish-installation.
-Stockfish 18 køres via Chess-API.com over internettet.
+En opdatering af det eksisterende chess.emilian.dk med et rigtigt 3D-bræt,
+Staunton-brikker, træmaterialer og en varm biblioteksbaggrund.
+2D-visningen er fjernet. De oprindelige skakregler og FEN-rettelsen er bevaret.
 
-RETTELSE I DENNE VERSION
-------------------------
-FEN-generatoren sender nu kun et en-passant-felt, når en passant faktisk er et
-lovligt træk for siden i trækket. Det matcher normal FEN-output fra chess.js og
-undgår Chess-API-fejlen INVALID_FEN_VALIDATION_ERROR efter visse dobbelt-bondetræk.
-Derudover valideres den genererede FEN lokalt, før den sendes til API'et.
+BETJENING
+---------
+- Klik på en brik, og klik på et lovligt destinationsfelt for at flytte.
+- Hold museknappen nede og træk for at dreje 360 grader og ændre højdevinklen.
+- Rul med musehjulet for at zoome. Kameraet holdes over bordet.
+- På touch: Træk med én finger; knib med to fingre for at zoome.
+- Nulstil visning vender tilbage til spillerens side og tilpasser brættet.
+- På det fokuserede bræt: Piletaster vælger felter, Enter/mellemrum vælger/flytter,
+  Escape fjerner markering, Skift+piletaster drejer kameraet, +/- zoomer, R nulstiller.
+  Piletaster følger brættets koordinater, også når kameraet er drejet.
 
-START LOKALT
-------------
-1. Åbn index.html i en moderne browser.
-2. Hvis browseren blokerer eksterne API-kald fra en lokal file://-side, host filen
-   som en statisk hjemmeside i stedet (anbefalet).
-
-DEL PÅ NETTET
--------------
-Upload hele mappen eller blot index.html til en statisk webhost som Netlify,
-GitHub Pages, Cloudflare Pages eller lignende. Der kræves ingen backend.
+START OG HOSTING
+---------------
+Appen er fortsat statisk og har ingen egen backend eller hemmelige nøgler.
+Alle filer og mapper skal med på webhosten, inklusive assets/ og vendor/.
+index.html kan ikke længere stå alene eller åbnes direkte med file://.
+Til lokal udvikling: Node.js 22+ og kommandoen npm run dev.
+Ingen npm-installation er nødvendig; 3D-bibliotekerne følger med i vendor/.
+Åbn derefter http://localhost:4173 i din egen browser.
+Vercel-konfigurationen serverer projektmappen som statiske filer.
 
 MOTOR
 -----
-Endpoint: https://chess-api.com/v1
-Motor: Stockfish 18
-Offentlig maksimal analysedypde i denne udgave: 18
-maxThinkingTime: 100 ms
+Stockfish leveres via https://chess-api.com/v1 som i den eksisterende app.
+Internet er nødvendigt, når computeren skal trække. Kun den aktuelle FEN-stilling
+og analyseindstillinger sendes. Der følger ingen lokal Stockfish-motor med.
+Fejl fra API'et vises med mulighed for at prøve samme stilling igen.
+Fortryd, nyt spil og ændret motorstyrke annullerer igangværende analyser, og
+forældede svar får ikke lov at ændre en nyere stilling.
 
-VIGTIGT
--------
-- Internetforbindelse er nødvendig, når computeren skal trække.
-- Den aktuelle FEN-stilling sendes til Chess-API.com til analyse.
-- Tilgængelighed, hastighed og eventuelle brugsgrænser bestemmes af Chess-API.com.
-- Stockfish er GPLv3-licenseret. Motoren er ikke bundlet i denne pakke.
+KONTROL UDFØRT 7. SEPTEMBER 2026
+------------------------------
+- 13 automatiske kontroller: spil/FEN, API-kontrakt og fejl, ugyldige motorsvar,
+  fortryd, annullering af gamle svar, rokade, en passant, bondeforvandling,
+  skakmat og kameratilpasning ved mobil-, tablet- og desktopformat.
+- Alle seks GLB-brikker kan indlæses med den medfølgende GLTFLoader.
+- Et levende API-kald efter 1. e4 gav det lovlige svar e7e5 ved dybde 9.
+- Browserkontrol af DOM, fejltilstand og layout ved smalle bredder og 200 % tekst.
 
-FILER
------
-index.html  - hele spillet (HTML, CSS og JavaScript i én fil)
-README.txt  - denne vejledning
+ÅBEN KONTROL FØR LIVE
+--------------------
+Kontrolbrowserens WebGL er deaktiveret. Derfor er den færdige WebGL-scene,
+materialernes endelige udseende, faktisk musestyring og touch endnu ikke visuelt
+eller interaktivt godkendt i en browser med grafikadgang. Afprøv grenens preview
+på desktop og mobil før merge til main. Den nye kode er ikke en 2D-fallback:
+mangler WebGL, vises en forklaring, og spilkontrollerne deaktiveres.
+
+De oprindelige remisbegrænsninger er bevaret: pat registreres, men gentagelse,
+50-træksreglen og utilstrækkeligt materiale er ikke implementeret.
+
+FILER OG RETTIGHEDER
+-------------------
+index.html, style.css, main.js: brugerflade.
+game.js: de eksisterende regler og Chess-API-adapteren.
+scene.js, camera.js: 3D-scene, klik og kamera.
+assets/: konverterede modeller, træteksturer og genereret biblioteksbillede.
+vendor/: Three.js r180 med relative modulimporter og original MIT-licens.
+tests/: testforløb med tydeligt deklarerede simulerede API-svar.
+credits.html og assets/ASSET-SOURCES.txt: kilder, bearbejdning og licenser.
+Brikkernes MIT-licens og Three.js-licensen skal følge med ved deling.
+Træteksturer er CC0. Biblioteksbilledet er AI-genereret; prompten følger med.
