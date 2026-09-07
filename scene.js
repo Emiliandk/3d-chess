@@ -2,6 +2,7 @@ import * as THREE from './vendor/three.module.js';
 import { OrbitControls } from './vendor/OrbitControls.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import {fitBoardCamera} from './camera.js';
+import {BOARD_SURFACE_Y,createBoard} from './board.js';
 
 const PIECES = {p:'pawn',r:'rook',n:'knight',b:'bishop',q:'queen',k:'king'};
 const NAMES = {p:'bonde',r:'tårn',n:'springer',b:'løber',q:'dronning',k:'konge'};
@@ -26,10 +27,10 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
   let needsRender=true,disposed=false,ready=false,state=null,side='w';
   let keyboardSquare={r:6,c:4},keyboardVisible=false;
   const pieceRoot=new THREE.Group();world.add(pieceRoot);
-  const pickTargets=[],squares=[],pieceMeshes=new Map(),templates={};
+  const pickTargets=[],pieceMeshes=new Map(),templates={};
   const loader=new THREE.TextureLoader();
   const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
-  const point=(r,c,y=.07)=>new THREE.Vector3(c-3.5,y,r-3.5);
+  const point=(r,c,y=BOARD_SURFACE_Y)=>new THREE.Vector3(c-3.5,y,r-3.5);
   function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();if(ready)fitBoardCamera(camera,controls.target,{azimuth:controls.getAzimuthalAngle(),polar:controls.getPolarAngle()});needsRender=true;}
   function resetView(nextSide=side){side=nextSide;resize();controls.target.set(0,.25,0);fitBoardCamera(camera,controls.target,{azimuth:(side==='b'?Math.PI:0)+.28});controls.update();needsRender=true;}
   resetView();
@@ -44,8 +45,8 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
   const markerMats={selected:new THREE.MeshBasicMaterial({color:0xf5ca71}),legal:new THREE.MeshBasicMaterial({color:0x9eccac}),last:new THREE.MeshBasicMaterial({color:0xd4a65f,transparent:true,opacity:.18,depthWrite:false}),check:new THREE.MeshBasicMaterial({color:0xea7467}),focus:new THREE.MeshBasicMaterial({color:0xffffff})};
   const markerRoot=new THREE.Group();world.add(markerRoot);
   const ringGeo=new THREE.RingGeometry(.38,.415,48),dotGeo=new THREE.CircleGeometry(.105,32),lastGeo=new THREE.PlaneGeometry(.96,.96);
-  function marker(geo,mat,r,c,y=.026){const m=new THREE.Mesh(geo,mat);m.rotation.x=-Math.PI/2;m.position.copy(point(r,c,y));markerRoot.add(m);}
-  function updateMarkers(){markerRoot.clear();if(!state)return;if(state.lastMove)for(const p of [state.lastMove.from,state.lastMove.to])marker(lastGeo,markerMats.last,p.r,p.c,.025);if(state.selected)marker(ringGeo,markerMats.selected,state.selected.r,state.selected.c,.028);for(const p of state.legalTargets)marker(p.capture?ringGeo:dotGeo,markerMats.legal,p.r,p.c,.03);if(state.checkSquare)marker(ringGeo,markerMats.check,state.checkSquare.r,state.checkSquare.c,.033);if(keyboardVisible)marker(ringGeo,markerMats.focus,keyboardSquare.r,keyboardSquare.c,.037);needsRender=true;}
+  function marker(geo,mat,r,c,y=BOARD_SURFACE_Y+.006){const m=new THREE.Mesh(geo,mat);m.rotation.x=-Math.PI/2;m.position.copy(point(r,c,y));markerRoot.add(m);}
+  function updateMarkers(){markerRoot.clear();if(!state)return;if(state.lastMove)for(const p of [state.lastMove.from,state.lastMove.to])marker(lastGeo,markerMats.last,p.r,p.c,BOARD_SURFACE_Y+.003);if(state.selected)marker(ringGeo,markerMats.selected,state.selected.r,state.selected.c,BOARD_SURFACE_Y+.006);for(const p of state.legalTargets)marker(p.capture?ringGeo:dotGeo,markerMats.legal,p.r,p.c,BOARD_SURFACE_Y+.008);if(state.checkSquare)marker(ringGeo,markerMats.check,state.checkSquare.r,state.checkSquare.c,BOARD_SURFACE_Y+.011);if(keyboardVisible)marker(ringGeo,markerMats.focus,keyboardSquare.r,keyboardSquare.c,BOARD_SURFACE_Y+.015);needsRender=true;}
   function squareDescription(r,c){const piece=state?.board[r]?.[c];return `${'abcdefgh'[c]}${8-r}: ${piece?(piece.color==='w'?'hvid':'sort')+' '+NAMES[piece.type]:'tomt felt'}`;}
   function announce(){canvas.setAttribute('aria-label','3D-skakbræt. '+squareDescription(keyboardSquare.r,keyboardSquare.c));onSquareFocus?.(squareDescription(keyboardSquare.r,keyboardSquare.c));}
   function pick(e){const rect=canvas.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObjects([...pickTargets,...pieceRoot.children],true)[0];if(!hit)return null;let node=hit.object;while(node&&!node.userData.square)node=node.parent;return node?.userData.square||null;}
@@ -63,7 +64,7 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
   canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();ready=false;onError?.(new Error('3D-visningen mistede forbindelsen til grafikken. Genindlæs for at fortsætte.'));});
   function frame(){if(disposed)return;requestAnimationFrame(frame);if(document.hidden)return;controls.update();if(needsRender){renderer.render(world,camera);needsRender=false;}}frame();
   const materials={};
-  const api={resetView,update(next){state=next;if(!ready)return;for(let r=0;r<8;r++)for(let c=0;c<8;c++){const key=`${r},${c}`,p=state.board[r][c],old=pieceMeshes.get(key),signature=p?`${p.color}${p.type}`:'';if(old&&old.userData.signature!==signature){pieceRoot.remove(old);pieceMeshes.delete(key);}if(p&&!pieceMeshes.has(key)){const group=templates[p.type].clone(true);group.scale.set(1.208,1,1.208);group.position.copy(point(r,c,.018));if(p.color==='b')group.rotation.y=Math.PI;group.userData.square={r,c};group.userData.signature=signature;group.traverse(n=>{if(n.isMesh){n.material=materials[p.color];n.castShadow=true;n.receiveShadow=true;}});const collar=new THREE.Mesh(new THREE.CylinderGeometry(p.type==='n'?.173:.205,p.type==='n'?.185:.21,.035,48),brass);collar.position.y=p.type==='n'?.384:.055;group.add(collar);pieceRoot.add(group);pieceMeshes.set(key,group);}}updateMarkers();announce();},dispose(){disposed=true;observer.disconnect();controls.dispose();renderer.dispose();}};
+  const api={resetView,update(next){state=next;if(!ready)return;for(let r=0;r<8;r++)for(let c=0;c<8;c++){const key=`${r},${c}`,p=state.board[r][c],old=pieceMeshes.get(key),signature=p?`${p.color}${p.type}`:'';if(old&&old.userData.signature!==signature){pieceRoot.remove(old);pieceMeshes.delete(key);}if(p&&!pieceMeshes.has(key)){const group=templates[p.type].clone(true);group.scale.set(1.208,1,1.208);group.position.copy(point(r,c,BOARD_SURFACE_Y));if(p.color==='b')group.rotation.y=Math.PI;group.userData.square={r,c};group.userData.signature=signature;group.traverse(n=>{if(n.isMesh){n.material=materials[p.color];n.castShadow=true;n.receiveShadow=true;}});const collar=new THREE.Mesh(new THREE.CylinderGeometry(p.type==='n'?.173:.205,p.type==='n'?.185:.21,.035,48),brass);collar.position.y=p.type==='n'?.384:.055;group.add(collar);pieceRoot.add(group);pieceMeshes.set(key,group);}}updateMarkers();announce();},dispose(){disposed=true;observer.disconnect();controls.dispose();renderer.dispose();}};
   try{
     const [wood,rough,normal,panorama,...models]=await Promise.all([
       loader.loadAsync('./assets/wood_table_001_diff_1k.jpg'),loader.loadAsync('./assets/wood_table_001_rough_1k.jpg'),loader.loadAsync('./assets/wood_table_001_nor_gl_1k.jpg'),loader.loadAsync('./assets/library-panorama.png'),
@@ -72,17 +73,17 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
     wood.colorSpace=THREE.SRGBColorSpace;wood.anisotropy=8;wood.wrapS=wood.wrapT=THREE.RepeatWrapping;
     for(const t of [rough,normal]){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;}
     panorama.mapping=THREE.EquirectangularReflectionMapping;panorama.colorSpace=THREE.SRGBColorSpace;
-    world.background=panorama;world.backgroundBlurriness=.1;world.backgroundIntensity=.65;world.backgroundRotation.y=.8;
-    const pmrem=new THREE.PMREMGenerator(renderer);world.environment=pmrem.fromEquirectangular(panorama).texture;world.environmentIntensity=.5;pmrem.dispose();
+    // Align the fireplace/globe/chair side of the room with the initial board view.
+    world.background=panorama;world.backgroundBlurriness=.045;world.backgroundIntensity=.82;world.backgroundRotation.y=1.5;
+    const pmrem=new THREE.PMREMGenerator(renderer);world.environment=pmrem.fromEquirectangular(panorama).texture;world.environmentIntensity=.5;world.environmentRotation.copy(world.backgroundRotation);pmrem.dispose();
     const walnut=new THREE.MeshPhysicalMaterial({color:0x9e7655,map:wood,roughnessMap:rough,roughness:.55,normalMap:normal,normalScale:new THREE.Vector2(.13,.13),clearcoat:.5,clearcoatRoughness:.27});
     const darkTile=walnut.clone();darkTile.color.set(0x9f7851);darkTile.roughness=.4;
     const lightTile=new THREE.MeshPhysicalMaterial({color:0xf0d5a3,roughness:.42,normalMap:normal,normalScale:new THREE.Vector2(.035,.035),clearcoat:.35,clearcoatRoughness:.3});
     const darkTrim=new THREE.MeshStandardMaterial({color:0x1d1008,roughness:.35});
-    box(9.65,.22,9.65,-.39,darkTrim);box(9.5,.035,9.5,-.261,brass);box(9.5,.27,9.5,-.108,walnut);box(8.13,.025,8.13,.007,brass);
+    const board=createBoard({walnut,brass,darkTrim,lightTile,darkTile});
+    world.add(board.group);pickTargets.push(...board.squares);
     const tableMat=walnut.clone();const tableMap=wood.clone();tableMap.repeat.set(2,2);tableMap.needsUpdate=true;tableMat.map=tableMap;tableMat.color.set(0x76523a);tableMat.roughness=.64;box(16,.38,14,-.72,tableMat);
-    const squareGeometry=new THREE.PlaneGeometry(1,1);
-    for(let r=0;r<8;r++)for(let c=0;c<8;c++){const mesh=new THREE.Mesh(squareGeometry,(r+c)%2===0?lightTile:darkTile);mesh.rotation.x=-Math.PI/2;mesh.position.copy(point(r,c,.022));mesh.receiveShadow=true;mesh.userData.square={r,c};world.add(mesh);pickTargets.push(mesh);squares.push(mesh);}
-    function label(text,x,z,rotation=0){const c=document.createElement('canvas');c.width=c.height=128;const ctx=c.getContext('2d');ctx.fillStyle='#d7b780';ctx.font='50px Georgia';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,64,66);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;const mesh=new THREE.Mesh(new THREE.PlaneGeometry(.31,.31),new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false}));mesh.rotation.set(-Math.PI/2,0,rotation);mesh.position.set(x,.035,z);world.add(mesh);}
+    function label(text,x,z,rotation=0){const c=document.createElement('canvas');c.width=c.height=128;const ctx=c.getContext('2d');ctx.fillStyle='#d7b780';ctx.font='50px Georgia';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,64,66);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;const mesh=new THREE.Mesh(new THREE.PlaneGeometry(.31,.31),new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false}));mesh.rotation.set(-Math.PI/2,0,rotation);mesh.position.set(x,BOARD_SURFACE_Y+.003,z);world.add(mesh);}
     for(let i=0;i<8;i++){label('abcdefgh'[i],i-3.5,4.35);label('abcdefgh'[i],i-3.5,-4.35,Math.PI);label(String(8-i),-4.35,i-3.5);label(String(8-i),4.35,i-3.5,Math.PI);}
     materials.w=new THREE.MeshPhysicalMaterial({color:0xf0d9ad,roughness:.32,clearcoat:.55,clearcoatRoughness:.2,metalness:.06});
     materials.b=new THREE.MeshPhysicalMaterial({color:0x55412c,map:wood,roughness:.3,clearcoat:.62,clearcoatRoughness:.2,metalness:.06,normalMap:normal,normalScale:new THREE.Vector2(.035,.035)});

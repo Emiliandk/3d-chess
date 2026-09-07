@@ -37,12 +37,25 @@ forældede svar får ikke lov at ændre en nyere stilling.
 
 KONTROL UDFØRT 7. SEPTEMBER 2026
 ------------------------------
-- 13 automatiske kontroller: spil/FEN, API-kontrakt og fejl, ugyldige motorsvar,
+- 15 automatiske kontroller: spil/FEN, API-kontrakt og fejl, ugyldige motorsvar,
   fortryd, annullering af gamle svar, rokade, en passant, bondeforvandling,
   skakmat og kameratilpasning ved mobil-, tablet- og desktopformat.
+- Brættets 64 felter kontrolleres mod hele brætgeometrien fra 17 synsretninger.
+  Testen omfatter feltfarver, fuld 8 x 8-dækning og skjulte felter under rammen.
 - Alle seks GLB-brikker kan indlæses med den medfølgende GLTFLoader.
 - Et levende API-kald efter 1. e4 gav det lovlige svar e7e5 ved dybde 9.
 - Browserkontrol af DOM, fejltilstand og layout ved smalle bredder og 200 % tekst.
+
+RETTELSE AF FELTER OG OMGIVELSER
+------------------------------
+Træpladens overside lå før over felterne og skjulte dem. Felterne er nu fysiske
+fliser over messingunderlaget og trærammen. Brikker og markeringer bruger samme
+definerede højde for spillefladen. Genindsættelse af de tidligere højder i en
+lokal kontrol genskabte fejlen, hvor trærammen bliver ramt før feltet.
+Biblioteksbaggrunden er genskabt ud fra brugerens nye reference: mørkt træ,
+marmorpejs, globus, lampe med sort skærm og en brun læderstol. Det er en
+genereret panoramafortolkning; den endelige beskæring og samling af panoramaet
+mangler fortsat visuel kontrol i WebGL.
 
 ÅBEN KONTROL FØR LIVE
 --------------------
@@ -59,7 +72,7 @@ FILER OG RETTIGHEDER
 -------------------
 index.html, style.css, main.js: brugerflade.
 game.js: de eksisterende regler og Chess-API-adapteren.
-scene.js, camera.js: 3D-scene, klik og kamera.
+scene.js, board.js, camera.js: 3D-scene, fysisk spilleflade, klik og kamera.
 assets/: konverterede modeller, træteksturer og genereret biblioteksbillede.
 vendor/: Three.js r180 med relative modulimporter og original MIT-licens.
 tests/: testforløb med tydeligt deklarerede simulerede API-svar.

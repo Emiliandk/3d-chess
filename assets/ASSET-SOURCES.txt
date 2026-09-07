@@ -20,3 +20,12 @@ https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_001/wood_tabl
 https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_001/wood_table_001_nor_gl_1k.jpg
 Diffuse215573bytes; roughness237261bytes; normal51927bytes.
 The source describes fine-grained stained reddish brown varnished wood, not verified walnut species.
+
+LIBRARY ROOM PANORAMA
+File: library-panorama.png, RGB PNG 1774 x 887 (2:1).
+Generated with the built-in image generator from the user-supplied
+queens-gambit-finaly-match-chess-set-black-queens-gambit-board-library-1500x1000__97912(2).webp reference.
+The generated room excludes the original chessboard, table and pieces; these remain live 3D geometry.
+Reference direction: dark wood shelves, green marble fireplace, globe, brass lamp with black shade, tufted brown leather chair.
+Exact generation instructions: library-panorama-prompt.txt.
+No resizing or further image editing applied. Panoramic interpretation; in-scene seam and crop are not yet visually verified.
