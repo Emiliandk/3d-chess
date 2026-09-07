@@ -13,6 +13,15 @@ The glasses sit at each player's right, diagonally opposite one another. The
 bottle is at the left-hand table edge from the default white-side view. Every
 object rests at table height y = -0.53 and clears the board frame.
 
-Glass shells use physical transmission. The amber liquid uses opaque physical
-materials inside those shells so Three.js r180's transmission pass includes it.
-This is a rendering approximation, with separate glossy level liquid surfaces.
+Both the clear shells and the cognac use physical transmission. Amber colour
+comes from volume absorption; the bottle has greater optical depth than the
+small servings. Each liquid volume has one continuous, level surface with a
+slightly raised meniscus, without a second opaque disc or solid liquid shadow.
+
+`../../cognac-render-pass.js` captures the scene with the hollow shells hidden,
+then lets their refraction sample that image, including the liquid. This avoids
+Three.js r180's opaque-only transmission-buffer limitation without changing the
+vendored renderer. The capture uses linear colour, mipmaps and a capped resolution,
+and runs only when the scene needs a redraw. Liquid thickness is an approximation,
+not a ray-traced measurement; overlapping separate vessels and caustics are not
+fully simulated.

@@ -19,6 +19,7 @@ export function createCognacProps({bottleTexture}) {
 
   const geometries = new Set();
   const materials = new Set();
+  const shells = [];
   const reference = bottleTexture.clone();
   reference.colorSpace = THREE.SRGBColorSpace;
   reference.wrapS = reference.wrapT = THREE.ClampToEdgeWrapping;
@@ -87,19 +88,15 @@ export function createCognacProps({bottleTexture}) {
     envMapIntensity: 1.1
   });
 
-  // r180 captures opaque objects for the glass transmission pass. Keeping the
-  // small liquid volumes opaque makes them visible through every glass wall
-  // without depending on sorting multiple nested transmission layers. Their
-  // curved sides and level, glossy surfaces still catch the real room lighting.
+  // The colour belongs to absorption through the liquid, not to an opaque
+  // brown surface. Both servings and bottle contain the same amber medium;
+  // the greater optical depth in the bottle makes it naturally darker.
+  // cognac-render-pass.js lets the clear shells see this transmissive liquid.
   const cognac = material({
-    color: 0x743006, metalness: 0, roughness: .14,
-    ior: 1.36, clearcoat: 1, clearcoatRoughness: .055,
-    envMapIntensity: .85
-  });
-  const meniscus = material({
-    color: 0x98531b, metalness: 0, roughness: .07,
-    ior: 1.36, clearcoat: 1, clearcoatRoughness: .035,
-    envMapIntensity: 1.15
+    color: 0xffffff, metalness: 0, roughness: .045,
+    transmission: 1, ior: 1.36, thickness: .6,
+    attenuationColor: 0xcf6a12, attenuationDistance: .75,
+    envMapIntensity: 1.2
   });
 
   // Broad thin foot and a long, slender stem; the low point rests on the table.
@@ -126,11 +123,13 @@ export function createCognacProps({bottleTexture}) {
     [0, 1.42]
   ]);
   const pour = lathe([
-    [0, 1.432], [.065, 1.438], [.119, 1.458], [.179, 1.501],
-    [.245, 1.569], [.302, 1.648], [.35, 1.735], [.389, 1.831],
-    [.407, 1.903], [.402, 1.899], [0, 1.899]
+    // Follow the inner bowl closely so the liquid meets the glass instead of
+    // floating inside an air gap. A tiny clearance avoids intersecting faces.
+    [0, 1.421], [.072, 1.428], [.127, 1.451], [.192, 1.497],
+    [.26, 1.567], [.321, 1.648], [.371, 1.737], [.41, 1.834],
+    [.428, 1.906], [.422, 1.901], [.412, 1.899],
+    [.39, 1.898], [0, 1.898]
   ]);
-  const pourSurface = geometry(new THREE.CircleGeometry(.4005, ROUND_SEGMENTS));
 
   function glass(name, x, z) {
     const result = new THREE.Group();
@@ -139,11 +138,10 @@ export function createCognacProps({bottleTexture}) {
     result.userData.decorative = true;
     result.userData.height = 3;
     mesh(result, 'crystal-foot-and-stem', footAndStem, solidCrystal);
-    mesh(result, 'hollow-tulip-bowl', bowl, crystal);
-    mesh(result, 'small-cognac-pour', pour, cognac, {shadow: true});
-    const surface = mesh(result, 'level-cognac-meniscus', pourSurface, meniscus);
-    surface.rotation.x = -Math.PI / 2;
-    surface.position.y = 1.8995;
+    shells.push(mesh(result, 'hollow-tulip-bowl', bowl, crystal, {order: 2}));
+    // A single closed volume includes a level surface and a slightly raised
+    // wet edge. No overlapping opaque disc, and no solid black liquid shadow.
+    mesh(result, 'small-cognac-pour', pour, cognac, {order: 1});
     group.add(result);
     return result;
   }
@@ -167,9 +165,10 @@ export function createCognacProps({bottleTexture}) {
     envMapIntensity: 1.1, clearcoat: .15, clearcoatRoughness: .06
   });
   const bottledCognac = material({
-    color: 0x481704, metalness: 0, roughness: .13,
-    ior: 1.36, clearcoat: 1, clearcoatRoughness: .05,
-    envMapIntensity: .9
+    color: 0xffffff, metalness: 0, roughness: .045,
+    transmission: 1, ior: 1.36, thickness: 1.08,
+    attenuationColor: 0xcf6a12, attenuationDistance: .75,
+    envMapIntensity: 1.2
   });
   const labelPaper = material({
     color: 0xffffff, map: reference, roughness: .74, metalness: 0,
@@ -185,7 +184,7 @@ export function createCognacProps({bottleTexture}) {
 
   // Slender, almost straight lower body; rounded shoulders taper into the long
   // clear neck seen in the reference. The bottom has a recessed central punt.
-  mesh(bottle, 'hollow-bottle-glass', lathe([
+  shells.push(mesh(bottle, 'hollow-bottle-glass', lathe([
     [0, .145], [.20, .105], [.35, .035], [.43, 0], [.537, 0],
     [.573, .035], [.588, .09], [.592, .17], [.59, .42],
     [.59, 2.67], [.585, 2.83], [.565, 2.998], [.519, 3.17],
@@ -196,19 +195,15 @@ export function createCognacProps({bottleTexture}) {
     [.498, 3.17], [.544, 2.998], [.564, 2.83], [.569, 2.67],
     [.569, .42], [.567, .19], [.546, .12], [.442, .079],
     [.362, .103], [.218, .209], [0, .246]
-  ]), bottleGlass);
+  ]), bottleGlass, {order: 2}));
 
   mesh(bottle, 'bottled-cognac', lathe([
-    [0, .257], [.208, .22], [.351, .116], [.435, .091],
-    [.535, .135], [.555, .201], [.556, .42], [.556, 2.67],
-    [.551, 2.827], [.531, 2.991], [.485, 3.16], [.418, 3.342],
-    [.339, 3.545], [.282, 3.71], [.258, 3.812], [.252, 3.808],
-    [0, 3.808]
-  ]), bottledCognac, {shadow: true});
-  const bottleSurface = mesh(bottle, 'bottle-fill-surface',
-    geometry(new THREE.CircleGeometry(.25, ROUND_SEGMENTS)), meniscus);
-  bottleSurface.rotation.x = -Math.PI / 2;
-  bottleSurface.position.y = 3.8085;
+    [0, .247], [.218, .21], [.362, .104], [.442, .08],
+    [.545, .121], [.566, .19], [.568, .42], [.568, 2.67],
+    [.563, 2.83], [.543, 2.998], [.497, 3.17], [.43, 3.354],
+    [.351, 3.555], [.294, 3.722], [.272, 3.812], [.267, 3.808],
+    [.254, 3.806], [.235, 3.805], [0, 3.805]
+  ]), bottledCognac, {order: 1});
 
   const labelGeometry = referenceWindow(
     geometry(new THREE.CylinderGeometry(.594, .594, 1.95, 48, 1, true, -1.15, 2.3)),
@@ -283,7 +278,7 @@ export function createCognacProps({bottleTexture}) {
 
   let disposed = false;
   return {
-    group, bounds, framingPoints,
+    group, bounds, framingPoints, shells,
     dispose() {
       if (disposed) return;
       disposed = true;

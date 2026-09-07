@@ -45,6 +45,29 @@ test('glass bowls have open mouths and a small pour below the rim',()=>{
   props.dispose();
 });
 
+test('each vessel has one transmissive liquid volume with a single exposed fill surface',()=>{
+  const props=createCognacProps({bottleTexture:new Texture()});
+  for(const vessel of props.group.children){
+    const liquids=vessel.children.filter(child=>child.isMesh&&/cognac|meniscus|fill-surface/.test(child.name));
+    assert.equal(liquids.length,1,`${vessel.name} must not have an overlapping liquid lid`);
+    const liquid=liquids[0];
+    assert.ok(liquid.material.isMeshPhysicalMaterial&&liquid.material.transmission>0,
+      'light must pass through the liquid instead of hitting an opaque brown surface');
+    assert.ok(liquid.material.thickness>0&&Number.isFinite(liquid.material.attenuationDistance),
+      'the liquid needs a finite absorption path');
+    const surface=new Mesh(liquid.geometry,liquid.material);
+    surface.updateMatrixWorld(true);
+    // Offset slightly from the lathe axis so a ray does not count several
+    // triangles meeting at the same central vertex as separate surfaces.
+    const hits=new Raycaster(new Vector3(.07,6,.031),new Vector3(0,-1,0)).intersectObject(surface);
+    assert.equal(hits.length,1,`${vessel.name} must have a single upward-facing liquid surface`);
+    assert.ok(hits[0].face.normal.y>.99,'the central fill surface must stay level');
+  }
+  assert.equal(props.shells.length,3,'each liquid volume needs its own outer refraction shell');
+  assert.ok(props.shells.every(shell=>shell.material.transmission>0));
+  props.dispose();
+});
+
 test('the complete board and table props fit phone, tablet and desktop camera views',()=>{
   const props=createCognacProps({bottleTexture:new Texture()});
   const points=[...props.framingPoints];
