@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17130f">
-  <meta name="description" content="Spil 3D-skak mod Stockfish. Drej brættet, find din vinkel, og tag dig tid til næste træk.">
+  <meta name="description" content="Tag plads til et parti 3D-skak mod Stockfish. Drej brættet, vælg motorstyrke, og spil i dit eget tempo i varme biblioteksomgivelser.">
   <title>3D Skak · Emilian</title>
   <link rel="stylesheet" href="./style.css">
 </head>
@@ -16,14 +16,14 @@
   </header>
   <main class="app">
     <section class="game-area" aria-labelledby="board-title">
-      <div class="board-heading"><div><p class="eyebrow">VED BRÆTTET</p><h1 id="board-title">Tid til et parti.</h1></div><span class="view-label">3D · FRI SYNSVINKEL</span></div>
+      <div class="board-heading"><div><p class="eyebrow">VED BRÆTTET</p><h1 id="board-title">Tag plads. Giv modspil.</h1></div><span class="view-label">3D · FRI SYNSVINKEL</span></div>
       <div class="stage" id="stage">
         <canvas id="boardCanvas" tabindex="0" role="application" aria-label="3D-skakbræt" aria-describedby="board-help keyboard-help"></canvas>
         <div class="loading" id="loading" role="status"><span class="loading-mark" aria-hidden="true">♔</span><p id="loadingText">Sætter brikkerne på plads…</p><button id="reloadScene" class="button secondary" hidden>Prøv igen</button></div>
         <div class="scene-caption" aria-hidden="true"><span id="viewSide">HVIDS SIDE</span><span>VALNØD & MESSING</span></div>
       </div>
       <div class="board-toolbar">
-        <p id="board-help"><span class="mouse-mark" aria-hidden="true">↔</span> Træk for at dreje og vippe <span class="separator">·</span> Rul for at zoome <span class="separator">·</span> Klik for at flytte</p>
+        <p id="board-help"><span class="mouse-mark" aria-hidden="true">↔</span> Træk for at dreje og vippe <span class="separator">·</span> Rul for at zoome <span class="separator">·</span> Klik for at vælge og flytte</p>
         <div class="view-controls">
           <button class="text-button fullscreen-button" id="fullscreenToggle" type="button" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" /></svg><span id="fullscreenLabel">Fuldskærm</span></button>
           <button class="text-button" id="resetView"><span aria-hidden="true">↺</span> Nulstil visning</button>
@@ -44,13 +44,13 @@
       </div>
       <div class="controls"><button class="button primary" id="newGame">Nyt spil <span aria-hidden="true">→</span></button><button class="button secondary" id="undo" disabled>Fortryd mit træk</button></div>
       <div class="history-heading"><h3>Trækhistorik</h3><span id="moveCount">0 træk</span></div>
-      <div class="moves" id="moves" aria-live="polite"><p class="empty-history">Dit første træk starter historien.</p></div>
-      <div class="engine-card"><div class="engine-heading"><span>Stockfish 18</span><span id="engineBadge">DYBDE 18</span></div><p id="engineState">Klar til at spille</p><p id="engineEval">Evaluering vises efter motorens træk.</p><button class="text-button" id="retryEngine" hidden>Prøv forbindelsen igen</button></div>
-      <details class="about-engine"><summary>Om motor og privatliv</summary><p>Spillet kræver internet. Skakstillingen sendes til <a href="https://chess-api.com/" target="_blank" rel="noopener noreferrer">Chess-API.com</a>, der finder computerens træk med Stockfish. Motorstyrken vælger den ønskede søgedybde.</p><p><a href="https://stockfishchess.org/" target="_blank" rel="noopener noreferrer">Stockfish</a> er GPLv3-licenseret. <a href="./credits.html" target="_blank" rel="noopener noreferrer">3D-modeller og materialer</a>.</p></details>
+      <div class="moves" id="moves" aria-live="polite"><p class="empty-history">Ingen træk endnu. Hvid lægger ud.</p></div>
+      <div class="engine-card"><div class="engine-heading"><span>Stockfish 18</span><span id="engineBadge">DYBDE 18</span></div><p id="engineState">Klar til at spille</p><p id="engineEval">Vurderingen vises efter computerens træk.</p><button class="text-button" id="retryEngine" hidden>Prøv forbindelsen igen</button></div>
+      <details class="about-engine"><summary>Om skakmotoren og dine data</summary><p>Spillet kræver internet. Når computeren skal trække, sendes skakstillingen og analyseindstillingerne til <a href="https://chess-api.com/" target="_blank" rel="noopener noreferrer">Chess-API.com</a>, som beregner trækket med Stockfish. Motorstyrken angiver den ønskede søgedybde.</p><p><a href="https://stockfishchess.org/" target="_blank" rel="noopener noreferrer">Stockfish</a> er GPLv3-licenseret. <a href="./credits.html" target="_blank" rel="noopener noreferrer">3D-modeller og materialer</a>.</p></details>
     </aside>
   </main>
-  <footer class="site-footer"><span>ET SKAKSPIL AF EMILIAN</span><span>Træk i dit eget tempo.</span></footer>
-  <dialog id="promotionModal" aria-labelledby="promotionTitle"><form method="dialog"><button class="dialog-close" aria-label="Annuller bondeforvandling">×</button></form><p class="eyebrow">SIDSTE RÆKKE</p><h2 id="promotionTitle">En bonde. Nye muligheder.</h2><p>Hvilken brik skal bonden forvandles til?</p><div class="promotion-grid"><button data-promote="q">♕<span>Dronning</span></button><button data-promote="r">♖<span>Tårn</span></button><button data-promote="b">♗<span>Løber</span></button><button data-promote="n">♘<span>Springer</span></button></div></dialog>
+  <footer class="site-footer"><span>ET SKAKSPIL AF EMILIAN</span><span>Gode træk må gerne tage tid.</span></footer>
+  <dialog id="promotionModal" aria-labelledby="promotionTitle"><form method="dialog"><button class="dialog-close" aria-label="Annuller bondeforvandling">×</button></form><p class="eyebrow">SIDSTE RÆKKE</p><h2 id="promotionTitle">Lille bonde. Nye ambitioner.</h2><p>Vælg, hvilken brik bonden skal forvandles til.</p><div class="promotion-grid"><button data-promote="q">♕<span>Dronning</span></button><button data-promote="r">♖<span>Tårn</span></button><button data-promote="b">♗<span>Løber</span></button><button data-promote="n">♘<span>Springer</span></button></div></dialog>
   <script type="module" src="./fullscreen.js"></script>
   <script type="module" src="./main.js"></script>
   <noscript>Aktivér JavaScript for at spille 3D-skak.</noscript>

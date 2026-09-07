@@ -6,7 +6,7 @@ let sceneView=null,lastColor='w';
 for(const id of ['newGame','humanColor','skillLevel','resetView']) $(id).disabled=true;
 const promotion=$('promotionModal');
 let previousFocus=null;
-function formatEval(engine){if(!engine.eval)return engine.thinking?'Motoren vurderer stillingen…':'Evaluering vises efter motorens træk.';const value=Number(engine.eval.value);const depth=engine.depth?` · dybde ${engine.depth}`:'';if(engine.eval.type==='mate')return `${value>=0?'Hvid':'Sort'} har mat i ${Math.abs(value)}${depth}`;return `Evaluering (hvid): ${value>0?'+':''}${value.toFixed(2)}${depth}`;}
+function formatEval(engine){if(!engine.eval)return engine.thinking?'Motoren vurderer stillingen…':'Vurderingen vises efter computerens træk.';const value=Number(engine.eval.value);const depth=engine.depth?` · dybde ${engine.depth}`:'';if(engine.eval.type==='mate')return `${value>=0?'Hvid':'Sort'} har mat i ${Math.abs(value)}${depth}`;return `Vurdering (hvid): ${value>0?'+':''}${value.toFixed(2)}${depth}`;}
 function statusFor(s){if(s.result==='checkmate')return `Skakmat · ${s.turn==='w'?'sort':'hvid'} vinder`;if(s.result==='stalemate')return 'Remis · pat';if(s.pendingPromotion)return 'Vælg bondens nye brik';if(s.turn===s.engineColor){if(s.engine.failed)return 'Motoren kunne ikke svare';return `Stockfish tænker${s.inCheck?' · skak':''}…`;}return `Din tur · ${s.humanColor==='w'?'hvid':'sort'}${s.inCheck?' · skak':''}`;}
 function showState(s){
   sceneView?.update(s);
@@ -14,12 +14,12 @@ function showState(s){
   $('statusText').textContent=statusFor(s);$('status').dataset.error=String(s.engine.failed);
   $('undo').disabled=!sceneView||!s.canUndo;$('humanColor').value=s.humanColor;$('skillLevel').value=String(s.engine.targetDepth);
   $('engineBadge').textContent=`DYBDE ${s.engine.targetDepth}`;
-  $('engineState').textContent=s.engine.failed?'Forbindelsen lykkedes ikke. Prøv igen for at fortsætte.':s.engine.thinking?'Analyserer dit næste modtræk…':s.engine.loading?'Gør motoren klar…':s.engine.hasResponded?'Forbundet via Chess-API.com':'Klar til at spille · kræver internet';
+  $('engineState').textContent=s.engine.failed?'Forbindelsen lykkedes ikke. Prøv igen for at fortsætte.':s.engine.thinking?'Finder computerens næste træk…':s.engine.loading?'Gør motoren klar…':s.engine.hasResponded?'Forbundet via Chess-API.com':'Klar til at spille · kræver internet';
   $('engineState').title=s.engine.failed?s.engine.error:'';
   $('engineEval').textContent=formatEval(s.engine);$('retryEngine').hidden=!s.engine.failed;
   $('moveCount').textContent=s.moveLog.length+' '+(s.moveLog.length===1?'træk':'træk');
   const moves=$('moves');moves.replaceChildren();
-  if(!s.moveLog.length){const p=document.createElement('p');p.className='empty-history';p.textContent='Dit første træk starter historien.';moves.append(p);}
+  if(!s.moveLog.length){const p=document.createElement('p');p.className='empty-history';p.textContent='Ingen træk endnu. Hvid lægger ud.';moves.append(p);}
   else for(let i=0;i<s.moveLog.length;i+=2){const row=document.createElement('div');row.className='move-row';const no=document.createElement('span');no.className='move-no';no.textContent=`${i/2+1}.`;const w=document.createElement('span'),b=document.createElement('span');w.textContent=s.moveLog[i]?.text||'';b.textContent=s.moveLog[i+1]?.text||'';row.append(no,w,b);moves.append(row);}
   moves.scrollTop=moves.scrollHeight;
   if(s.pendingPromotion&&!promotion.open){previousFocus=document.activeElement;promotion.showModal();promotion.querySelector('[data-promote]').focus();}
