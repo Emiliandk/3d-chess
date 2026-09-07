@@ -1,0 +1,31 @@
+STAUNTON CHESS PIECES
+Original source: https://github.com/clarkerubber/Staunton-Pieces
+Source commit: cef2c79445380c5bffec461a80c7c91caf89b3b2
+Source directory: Source/Staunton/
+License: MIT, Copyright (c) 2014 clarkerubber. Include LICENSE with redistributed GLB models.
+License URL: https://github.com/clarkerubber/Staunton-Pieces/blob/master/LICENSE
+Converted from the individual binary STL files into GLB 2.0.
+Conversion: weld rounded vertices, average face normals, cylindrical texture coordinates; geometry centered XZ, baseY0, common scale1.55/78. No external buffers or texture dependencies.
+Axes: Y-up. Knight nose faces negativeZ. Mesh/node names match lowercase filenames.
+Heights: pawn0.854487, rook0.973718, knight1.172436, bishop1.172436, queen1.351282, king1.55.
+King base diameter0.596154; pawn base diameter0.476924. Shape proportions retained.
+
+WOOD TEXTURES
+Source: https://polyhaven.com/a/wood_table_001
+Photographer: Dimitrios Savva. Processing: Rico Cilliers.
+License: CC0. https://polyhaven.com/license
+Files are original1K JPG maps, unmodified:
+https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_001/wood_table_001_diff_1k.jpg
+https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_001/wood_table_001_rough_1k.jpg
+https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/wood_table_001/wood_table_001_nor_gl_1k.jpg
+Diffuse215573bytes; roughness237261bytes; normal51927bytes.
+The source describes fine-grained stained reddish brown varnished wood, not verified walnut species.
+
+LIBRARY ROOM PANORAMA
+File: library-panorama.png, RGB PNG 1774 x 887 (2:1).
+Generated with the built-in image generator from the user-supplied
+queens-gambit-finaly-match-chess-set-black-queens-gambit-board-library-1500x1000__97912(2).webp reference.
+The generated room excludes the original chessboard, table and pieces; these remain live 3D geometry.
+Reference direction: dark wood shelves, green marble fireplace, globe, brass lamp with black shade, tufted brown leather chair.
+Exact generation instructions: library-panorama-prompt.txt.
+No resizing or further image editing applied. Panoramic interpretation; in-scene seam and crop are not yet visually verified.
