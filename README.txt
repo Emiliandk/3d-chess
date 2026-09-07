@@ -12,6 +12,9 @@ BETJENING
 - Rul med musehjulet for at zoome. Kameraet holdes over bordet.
 - På touch: Træk med én finger; knib med to fingre for at zoome.
 - Nulstil visning vender tilbage til spillerens side og tilpasser brættet.
+- Fuldskærm under brættet viser hele spillet, inklusive sidepanel og dialoger.
+  Brug Afslut fuldskærm eller Esc for at vende tilbage. Spillet fortsætter uden
+  genindlæsning. Knappen vises kun, når browseren tillader Fullscreen API.
 - På det fokuserede bræt: Piletaster vælger felter, Enter/mellemrum vælger/flytter,
   Escape fjerner markering, Skift+piletaster drejer kameraet, +/- zoomer, R nulstiller.
   Piletaster følger brættets koordinater, også når kameraet er drejet.
@@ -57,6 +60,16 @@ marmorpejs, globus, lampe med sort skærm og en brun læderstol. Det er en
 genereret panoramafortolkning; den endelige beskæring og samling af panoramaet
 mangler fortsat visuel kontrol i WebGL.
 
+KONTROL AF FULDSKÆRM
+-------------------
+Fuldskærmsknappen er afprøvet i kontrolbrowseren med rigtig Fullscreen API:
+indgang, udgang via knappen og Esc, korrekt knaptekst og aria-pressed.
+Brætområdet og sidepanelet holder sig inden for desktopvisningen; på smalle
+skærme kan siden rulles som normalt. Mobilbredde er kontrolleret uden vandret
+overløb. I en ramme uden tilladelse til fuldskærm skjules knappen korrekt.
+De 15 eksisterende spil- og geometritests består. Fuldskærm er kontrolleret
+i WebGL-fejltilstanden; selve 3D-renderingen er fortsat utilgængelig her.
+
 ÅBEN KONTROL FØR LIVE
 --------------------
 Kontrolbrowserens WebGL er deaktiveret. Derfor er den færdige WebGL-scene,
@@ -73,6 +86,7 @@ FILER OG RETTIGHEDER
 index.html, style.css, main.js: brugerflade.
 game.js: de eksisterende regler og Chess-API-adapteren.
 scene.js, board.js, camera.js: 3D-scene, fysisk spilleflade, klik og kamera.
+fullscreen.js: browserens fuldskærmsfunktion, uafhængigt af skakmotoren.
 assets/: konverterede modeller, træteksturer og genereret biblioteksbillede.
 vendor/: Three.js r180 med relative modulimporter og original MIT-licens.
 tests/: testforløb med tydeligt deklarerede simulerede API-svar.
