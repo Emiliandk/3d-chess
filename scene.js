@@ -3,6 +3,7 @@ import { OrbitControls } from './vendor/OrbitControls.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import {fitBoardCamera} from './camera.js';
 import {BOARD_SURFACE_Y,createBoard} from './board.js';
+import {createCognacProps} from './cognac-props.js';
 
 const PIECES = {p:'pawn',r:'rook',n:'knight',b:'bishop',q:'queen',k:'king'};
 const NAMES = {p:'bonde',r:'tårn',n:'springer',b:'løber',q:'dronning',k:'konge'};
@@ -25,19 +26,20 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
   controls.mouseButtons={LEFT:THREE.MOUSE.ROTATE,MIDDLE:THREE.MOUSE.DOLLY,RIGHT:THREE.MOUSE.ROTATE};
   controls.touches={ONE:THREE.TOUCH.ROTATE,TWO:THREE.TOUCH.DOLLY_ROTATE};
   let needsRender=true,disposed=false,ready=false,state=null,side='w';
+  let tableProps=null,framingPoints=[];
   let keyboardSquare={r:6,c:4},keyboardVisible=false;
   const pieceRoot=new THREE.Group();world.add(pieceRoot);
   const pickTargets=[],pieceMeshes=new Map(),templates={};
   const loader=new THREE.TextureLoader();
   const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
   const point=(r,c,y=BOARD_SURFACE_Y)=>new THREE.Vector3(c-3.5,y,r-3.5);
-  function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();if(ready)fitBoardCamera(camera,controls.target,{azimuth:controls.getAzimuthalAngle(),polar:controls.getPolarAngle()});needsRender=true;}
-  function resetView(nextSide=side){side=nextSide;resize();controls.target.set(0,.25,0);fitBoardCamera(camera,controls.target,{azimuth:(side==='b'?Math.PI:0)+.28});controls.update();needsRender=true;}
+  function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();if(ready)fitBoardCamera(camera,controls.target,{azimuth:controls.getAzimuthalAngle(),polar:controls.getPolarAngle(),framingPoints});needsRender=true;}
+  function resetView(nextSide=side){side=nextSide;resize();controls.target.set(0,.25,0);fitBoardCamera(camera,controls.target,{azimuth:(side==='b'?Math.PI:0)+.28,framingPoints});controls.update();needsRender=true;}
   resetView();
   const observer=new ResizeObserver(resize);observer.observe(canvas.parentElement);
   const hemi=new THREE.HemisphereLight(0xffedd0,0x3d2c23,2);world.add(hemi);
   const key=new THREE.DirectionalLight(0xffe1b2,3.7);key.position.set(-6,12,7);key.castShadow=true;
-  key.shadow.mapSize.set(2048,2048);key.shadow.camera.left=-7;key.shadow.camera.right=7;key.shadow.camera.top=7;key.shadow.camera.bottom=-7;key.shadow.camera.near=.5;key.shadow.camera.far=35;key.shadow.normalBias=.02;key.shadow.bias=-.0001;key.shadow.radius=3;world.add(key);
+  key.shadow.mapSize.set(2048,2048);key.shadow.camera.left=-9;key.shadow.camera.right=9;key.shadow.camera.top=9;key.shadow.camera.bottom=-9;key.shadow.camera.near=.5;key.shadow.camera.far=35;key.shadow.normalBias=.02;key.shadow.bias=-.0001;key.shadow.radius=3;world.add(key);
   const fill=new THREE.DirectionalLight(0xe2eaf6,1.3);fill.position.set(8,5,-6);world.add(fill);
   const rim=new THREE.DirectionalLight(0xffc279,1.7);rim.position.set(-3,6,-8);world.add(rim);
   function box(w,h,d,y,material){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);m.position.y=y;m.receiveShadow=true;m.castShadow=true;world.add(m);return m;}
@@ -64,10 +66,11 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
   canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();ready=false;onError?.(new Error('3D-visningen mistede forbindelsen til grafikken. Genindlæs for at fortsætte.'));});
   function frame(){if(disposed)return;requestAnimationFrame(frame);if(document.hidden)return;controls.update();if(needsRender){renderer.render(world,camera);needsRender=false;}}frame();
   const materials={};
-  const api={resetView,update(next){state=next;if(!ready)return;for(let r=0;r<8;r++)for(let c=0;c<8;c++){const key=`${r},${c}`,p=state.board[r][c],old=pieceMeshes.get(key),signature=p?`${p.color}${p.type}`:'';if(old&&old.userData.signature!==signature){pieceRoot.remove(old);pieceMeshes.delete(key);}if(p&&!pieceMeshes.has(key)){const group=templates[p.type].clone(true);group.scale.set(1.208,1,1.208);group.position.copy(point(r,c,BOARD_SURFACE_Y));if(p.color==='b')group.rotation.y=Math.PI;group.userData.square={r,c};group.userData.signature=signature;group.traverse(n=>{if(n.isMesh){n.material=materials[p.color];n.castShadow=true;n.receiveShadow=true;}});const collar=new THREE.Mesh(new THREE.CylinderGeometry(p.type==='n'?.173:.205,p.type==='n'?.185:.21,.035,48),brass);collar.position.y=p.type==='n'?.384:.055;group.add(collar);pieceRoot.add(group);pieceMeshes.set(key,group);}}updateMarkers();announce();},dispose(){disposed=true;observer.disconnect();controls.dispose();renderer.dispose();}};
+  const api={resetView,update(next){state=next;if(!ready)return;for(let r=0;r<8;r++)for(let c=0;c<8;c++){const key=`${r},${c}`,p=state.board[r][c],old=pieceMeshes.get(key),signature=p?`${p.color}${p.type}`:'';if(old&&old.userData.signature!==signature){pieceRoot.remove(old);pieceMeshes.delete(key);}if(p&&!pieceMeshes.has(key)){const group=templates[p.type].clone(true);group.scale.set(1.208,1,1.208);group.position.copy(point(r,c,BOARD_SURFACE_Y));if(p.color==='b')group.rotation.y=Math.PI;group.userData.square={r,c};group.userData.signature=signature;group.traverse(n=>{if(n.isMesh){n.material=materials[p.color];n.castShadow=true;n.receiveShadow=true;}});const collar=new THREE.Mesh(new THREE.CylinderGeometry(p.type==='n'?.173:.205,p.type==='n'?.185:.21,.035,48),brass);collar.position.y=p.type==='n'?.384:.055;group.add(collar);pieceRoot.add(group);pieceMeshes.set(key,group);}}updateMarkers();announce();},dispose(){disposed=true;observer.disconnect();tableProps?.dispose();controls.dispose();renderer.dispose();}};
   try{
-    const [wood,rough,normal,panorama,...models]=await Promise.all([
+    const [wood,rough,normal,panorama,bottleTexture,...models]=await Promise.all([
       loader.loadAsync('./assets/wood_table_001_diff_1k.jpg'),loader.loadAsync('./assets/wood_table_001_rough_1k.jpg'),loader.loadAsync('./assets/wood_table_001_nor_gl_1k.jpg'),loader.loadAsync('./assets/library-panorama.png'),
+      loader.loadAsync('./assets/cognac/gourry-bottle-reference.png'),
       ...Object.values(PIECES).map(name=>new GLTFLoader().loadAsync(`./assets/${name}.glb`))
     ]);
     wood.colorSpace=THREE.SRGBColorSpace;wood.anisotropy=8;wood.wrapS=wood.wrapT=THREE.RepeatWrapping;
@@ -83,12 +86,13 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
     const board=createBoard({walnut,brass,darkTrim,lightTile,darkTile});
     world.add(board.group);pickTargets.push(...board.squares);
     const tableMat=walnut.clone();const tableMap=wood.clone();tableMap.repeat.set(2,2);tableMap.needsUpdate=true;tableMat.map=tableMap;tableMat.color.set(0x76523a);tableMat.roughness=.64;box(16,.38,14,-.72,tableMat);
+    tableProps=createCognacProps({bottleTexture});world.add(tableProps.group);framingPoints=tableProps.framingPoints;
     function label(text,x,z,rotation=0){const c=document.createElement('canvas');c.width=c.height=128;const ctx=c.getContext('2d');ctx.fillStyle='#d7b780';ctx.font='50px Georgia';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,64,66);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;const mesh=new THREE.Mesh(new THREE.PlaneGeometry(.31,.31),new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false}));mesh.rotation.set(-Math.PI/2,0,rotation);mesh.position.set(x,BOARD_SURFACE_Y+.003,z);world.add(mesh);}
     for(let i=0;i<8;i++){label('abcdefgh'[i],i-3.5,4.35);label('abcdefgh'[i],i-3.5,-4.35,Math.PI);label(String(8-i),-4.35,i-3.5);label(String(8-i),4.35,i-3.5,Math.PI);}
     materials.w=new THREE.MeshPhysicalMaterial({color:0xf0d9ad,roughness:.32,clearcoat:.55,clearcoatRoughness:.2,metalness:.06});
     materials.b=new THREE.MeshPhysicalMaterial({color:0x55412c,map:wood,roughness:.3,clearcoat:.62,clearcoatRoughness:.2,metalness:.06,normalMap:normal,normalScale:new THREE.Vector2(.035,.035)});
     Object.keys(PIECES).forEach((type,i)=>templates[type]=models[i].scene);
-    ready=true;if(state)api.update(state);needsRender=true;renderer.render(world,camera);onReady?.();
+    ready=true;resetView();if(state)api.update(state);needsRender=true;renderer.render(world,camera);onReady?.();
   }catch(error){onError?.(error);throw error;}
   return api;
 }
