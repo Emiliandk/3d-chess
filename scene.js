@@ -3,6 +3,7 @@ import { OrbitControls } from './vendor/OrbitControls.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import {fitChessView} from './camera.js';
 import {BOARD_SURFACE_Y,createBoard} from './board.js';
+import {pickChessSquare} from './picking.js';
 import {createCognacProps} from './cognac-props.js';
 import {createCognacRenderPass} from './cognac-render-pass.js';
 
@@ -61,7 +62,7 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
   function updateMarkers(){markerRoot.clear();if(!state)return;if(state.lastMove)for(const p of [state.lastMove.from,state.lastMove.to])marker(lastGeo,markerMats.last,p.r,p.c,BOARD_SURFACE_Y+.003);if(state.selected)marker(ringGeo,markerMats.selected,state.selected.r,state.selected.c,BOARD_SURFACE_Y+.006);for(const p of state.legalTargets)marker(p.capture?ringGeo:dotGeo,markerMats.legal,p.r,p.c,BOARD_SURFACE_Y+.008);if(state.checkSquare)marker(ringGeo,markerMats.check,state.checkSquare.r,state.checkSquare.c,BOARD_SURFACE_Y+.011);if(keyboardVisible)marker(ringGeo,markerMats.focus,keyboardSquare.r,keyboardSquare.c,BOARD_SURFACE_Y+.015);needsRender=true;}
   function squareDescription(r,c){const piece=state?.board[r]?.[c];return `${'abcdefgh'[c]}${8-r}: ${piece?(piece.color==='w'?'hvid':'sort')+' '+NAMES[piece.type]:'tomt felt'}`;}
   function announce(){canvas.setAttribute('aria-label','3D-skakbræt. '+squareDescription(keyboardSquare.r,keyboardSquare.c));onSquareFocus?.(squareDescription(keyboardSquare.r,keyboardSquare.c));}
-  function pick(e){const rect=canvas.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);raycaster.setFromCamera(pointer,camera);const hit=raycaster.intersectObjects([...pickTargets,...pieceRoot.children],true)[0];if(!hit)return null;let node=hit.object;while(node&&!node.userData.square)node=node.parent;return node?.userData.square||null;}
+  function pick(e){const rect=canvas.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);return pickChessSquare({raycaster,pointer,camera,squares:pickTargets,pieces:pieceRoot.children,width:rect.width,height:rect.height});}
   const down=new Map();let gestureMoved=false;
   canvas.addEventListener('pointerdown',e=>{if(down.size===0)gestureMoved=false;down.set(e.pointerId,{x:e.clientX,y:e.clientY,button:e.button});if(down.size>1)gestureMoved=true;keyboardVisible=false;updateMarkers();});
   canvas.addEventListener('pointermove',e=>{const p=down.get(e.pointerId);if(p&&Math.hypot(e.clientX-p.x,e.clientY-p.y)>6)gestureMoved=true;});
