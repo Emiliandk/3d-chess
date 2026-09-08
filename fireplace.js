@@ -1,9 +1,9 @@
 import * as THREE from './vendor/three.module.js';
 
 // Pixel coordinates in the immutable 1774 × 887 library panorama. The entire
-// feather/warp support stays inside the firebox, above the iron grate.
+// feather support stays inside the dark firebox, leaving the marble untouched.
 const WIDTH=1774,HEIGHT=887;
-const REGION={left:574,right:676,top:493,bottom:567};
+const REGION={left:552,right:700,top:476,bottom:585};
 const RADIUS=80;
 
 export function panoramaDirection(u,v) {
@@ -11,7 +11,8 @@ export function panoramaDirection(u,v) {
   return new THREE.Vector3(Math.cos(latitude)*Math.cos(longitude),Math.sin(latitude),Math.cos(latitude)*Math.sin(longitude));
 }
 
-export function createFireplace({environment,rotation=1.5,intensity=.82,blur=.045}) {
+export function createFireplace({atlas=null,rotation=1.5,intensity=.82}) {
+  if(atlas){atlas.colorSpace=THREE.SRGBColorSpace;atlas.generateMipmaps=false;atlas.minFilter=THREE.LinearFilter;atlas.magFilter=THREE.LinearFilter;}
   const positions=[],uvs=[],indices=[];
   for(let y=0;y<=8;y++)for(let x=0;x<=12;x++) {
     const u=THREE.MathUtils.lerp(REGION.left,REGION.right,x/12)/WIDTH;
@@ -26,57 +27,68 @@ export function createFireplace({environment,rotation=1.5,intensity=.82,blur=.04
   geometry.setIndex(indices);geometry.computeBoundingSphere();
   const material=new THREE.ShaderMaterial({
     name:'living-fireplace',transparent:true,depthWrite:false,side:THREE.DoubleSide,
-    defines:{ENVMAP_TYPE_CUBE_UV:'',CUBEUV_TEXEL_WIDTH:1/environment.image.width,CUBEUV_TEXEL_HEIGHT:1/environment.image.height,CUBEUV_MAX_MIP:(Math.log2(environment.image.height)-2).toFixed(1)},
-    uniforms:{envMap:{value:environment},time:{value:0},intensity:{value:intensity},blur:{value:blur}},
+    uniforms:{fireAtlas:{value:atlas},time:{value:0},intensity:{value:intensity}},
     vertexShader:`varying vec2 panoramaUv;
       void main(){panoramaUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
     fragmentShader:`
-      uniform sampler2D envMap;
-      uniform float time,intensity,blur;
+      uniform sampler2D fireAtlas;
+      uniform float time,intensity;
       varying vec2 panoramaUv;
       #include <common>
-      #include <cube_uv_reflection_fragment>
-      vec3 direction(vec2 uv){
-        float longitude=(uv.x-.5)*2.0*PI,latitude=(.5-uv.y)*PI;
-        return vec3(cos(latitude)*cos(longitude),sin(latitude),cos(latitude)*sin(longitude));
+      vec3 frameColor(float frame,vec2 uv){
+        vec2 cell=vec2(mod(frame,8.0),floor(frame/8.0));
+        // Pixel centres plus extruded gutters prevent adjacent-frame bleed.
+        vec2 pixel=cell*vec2(252.0,140.0)+vec2(2.5)+uv*vec2(247.0,135.0);
+        vec2 at=vec2(pixel.x/2016.0,1.0-pixel.y/1820.0);
+        vec2 stepSize=vec2(1.15/2016.0,1.15/1820.0);
+        // Keep the photographed fire in the existing room's soft focus.
+        return texture2D(fireAtlas,at).rgb*.5
+          +(texture2D(fireAtlas,at+vec2(stepSize.x,0.0)).rgb
+          +texture2D(fireAtlas,at-vec2(stepSize.x,0.0)).rgb
+          +texture2D(fireAtlas,at+vec2(0.0,stepSize.y)).rgb
+          +texture2D(fireAtlas,at-vec2(0.0,stepSize.y)).rgb)*.125;
       }
       void main(){
-        vec2 pixel=panoramaUv*vec2(1774.0,887.0);
-        float mask=smoothstep(574.0,586.0,pixel.x)*(1.0-smoothstep(664.0,676.0,pixel.x))
-          *smoothstep(493.0,509.0,pixel.y)*(1.0-smoothstep(559.0,567.0,pixel.y));
+        vec2 local=(panoramaUv*vec2(1774.0,887.0)-vec2(552.0,476.0))/vec2(148.0,109.0);
+        float mask=smoothstep(0.0,.065,local.x)*(1.0-smoothstep(.935,1.0,local.x))
+          *smoothstep(0.0,.06,local.y)*(1.0-smoothstep(.925,1.0,local.y));
         if(mask<.001)discard;
-        float height=clamp((564.0-pixel.y)/48.0,0.0,1.0);
-        float wave=sin(pixel.x*.18+time*2.8)+.45*sin(pixel.y*.27-time*4.1);
-        vec2 source=pixel;
-        source.x+=height*(2.2*wave+sin(time*1.7));
-        source.y+=(564.0-pixel.y)*(.13*sin(time*2.2+pixel.x*.13)+.07*sin(time*3.7-pixel.x*.21));
-        vec3 color=textureCubeUV(envMap,direction(source/vec2(1774.0,887.0)),blur).rgb;
-        float flicker=1.0+.07*sin(time*3.1)+.035*sin(time*7.3+1.2);
-        gl_FragColor=vec4(color*intensity*flicker,mask);
+        // A central crop of reference 04 fits the existing firebox proportions.
+        vec2 source=vec2(.09+local.x*.82,local.y);
+        float phase=mod(time/.09,99.0),frame=floor(phase);
+        vec3 color=mix(frameColor(frame,source),frameColor(mod(frame+1.0,99.0),source),fract(phase));
+        // Deepen the photographed brick recess without dimming the hot tongues.
+        float luminance=dot(color,vec3(.2126,.7152,.0722));
+        color*=mix(.40,1.45,smoothstep(.025,.5,luminance));
+        gl_FragColor=vec4(color*intensity,mask);
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`
   });
   const mesh=new THREE.Mesh(geometry,material);
-  mesh.name='fireplace-panorama-animation';mesh.renderOrder=-1;
+  mesh.name='fireplace-panorama-animation';mesh.renderOrder=-1;mesh.visible=!!atlas;
   // Like Three's background, translation follows the camera, orientation does
   // not. Depth testing lets the table and pieces naturally occlude the fire.
   mesh.onBeforeRender=(_renderer,_scene,camera)=>mesh.matrixWorld.copyPosition(camera.matrixWorld);
   const frustum=new THREE.Frustum(),projection=new THREE.Matrix4();
-  let lastFrame=-Infinity,disposed=false;
+  let lastFrame=-Infinity,disposed=false,wasReduced=false;
   function update(milliseconds,camera,reducedMotion=false) {
     if(disposed)return false;
-    const wasVisible=mesh.visible;
-    mesh.visible=!reducedMotion;
-    if(reducedMotion)return wasVisible;
+    if(!atlas)return false;
     mesh.position.copy(camera.position);mesh.updateMatrixWorld();
+    if(reducedMotion){
+      const changed=!wasReduced||material.uniforms.time.value!==0;
+      wasReduced=true;material.uniforms.time.value=0;
+      return changed;
+    }
+    const resumed=wasReduced;wasReduced=false;
     projection.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
     frustum.setFromProjectionMatrix(projection);
     if(!frustum.intersectsObject(mesh))return false;
-    if(milliseconds-lastFrame<1000/24)return false;
+    if(!resumed&&milliseconds-lastFrame<1000/24)return false;
     lastFrame=milliseconds;material.uniforms.time.value=milliseconds*.001;
     return true;
   }
-  function dispose(){if(disposed)return;disposed=true;mesh.removeFromParent();geometry.dispose();material.dispose();}
+  function dispose(){if(disposed)return;disposed=true;mesh.removeFromParent();geometry.dispose();material.dispose();atlas?.dispose();}
   return {mesh,update,dispose};
 }

@@ -85,9 +85,10 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
   const materials={};
   const api={resetView,setViewMode,getViewMode:()=>viewMode,update(next){state=next;if(!ready)return;renderer.shadowMap.needsUpdate=true;for(let r=0;r<8;r++)for(let c=0;c<8;c++){const key=`${r},${c}`,p=state.board[r][c],old=pieceMeshes.get(key),signature=p?`${p.color}${p.type}`:'';if(old&&old.userData.signature!==signature){pieceRoot.remove(old);pieceMeshes.delete(key);}if(p&&!pieceMeshes.has(key)){const group=templates[p.type].clone(true);group.scale.set(1.208,1,1.208);group.position.copy(point(r,c,BOARD_SURFACE_Y));if(p.color==='b')group.rotation.y=Math.PI;group.userData.square={r,c};group.userData.signature=signature;group.traverse(n=>{if(n.isMesh){n.material=materials[p.color];n.castShadow=true;n.receiveShadow=true;}});const collar=new THREE.Mesh(new THREE.CylinderGeometry(p.type==='n'?.173:.205,p.type==='n'?.185:.21,.035,48),brass);collar.position.y=p.type==='n'?.384:.055;group.add(collar);pieceRoot.add(group);pieceMeshes.set(key,group);}}updateMarkers();announce();},dispose(){disposed=true;observer.disconnect();reducedMotion.removeEventListener('change',motionChanged);fireplace?.dispose();cognacPass?.dispose();tableProps?.dispose();controls.dispose();renderer.dispose();}};
   try{
-    const [wood,rough,normal,panorama,bottleTexture,...models]=await Promise.all([
+    const [wood,rough,normal,panorama,bottleTexture,fireAtlas,...models]=await Promise.all([
       loader.loadAsync('./assets/wood_table_001_diff_1k.jpg'),loader.loadAsync('./assets/wood_table_001_rough_1k.jpg'),loader.loadAsync('./assets/wood_table_001_nor_gl_1k.jpg'),loader.loadAsync('./assets/library-panorama.png'),
       loader.loadAsync('./assets/cognac/gourry-bottle-reference.png'),
+      loader.loadAsync('./assets/fireplace/natural-fire.webp').catch(()=>null),
       ...Object.values(PIECES).map(name=>new GLTFLoader().loadAsync(`./assets/${name}.glb`))
     ]);
     wood.colorSpace=THREE.SRGBColorSpace;wood.anisotropy=8;wood.wrapS=wood.wrapT=THREE.RepeatWrapping;
@@ -96,8 +97,8 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
     // Align the fireplace/globe/chair side of the room with the initial board view.
     world.background=panorama;world.backgroundBlurriness=.045;world.backgroundIntensity=.82;world.backgroundRotation.y=1.5;
     const pmrem=new THREE.PMREMGenerator(renderer);world.environment=pmrem.fromEquirectangular(panorama).texture;world.environmentIntensity=.5;world.environmentRotation.copy(world.backgroundRotation);pmrem.dispose();
-    fireplace=createFireplace({environment:world.environment,rotation:world.backgroundRotation.y,intensity:world.backgroundIntensity,blur:world.backgroundBlurriness});
-    fireplace.mesh.visible=!reducedMotion.matches;world.add(fireplace.mesh);
+    fireplace=createFireplace({atlas:fireAtlas,rotation:world.backgroundRotation.y,intensity:world.backgroundIntensity});
+    world.add(fireplace.mesh);
     const walnut=new THREE.MeshPhysicalMaterial({color:0x9e7655,map:wood,roughnessMap:rough,roughness:.55,normalMap:normal,normalScale:new THREE.Vector2(.13,.13),clearcoat:.5,clearcoatRoughness:.27});
     const darkTile=walnut.clone();darkTile.color.set(0x9f7851);darkTile.roughness=.4;
     const lightTile=new THREE.MeshPhysicalMaterial({color:0xf0d5a3,roughness:.42,normalMap:normal,normalScale:new THREE.Vector2(.035,.035),clearcoat:.35,clearcoatRoughness:.3});

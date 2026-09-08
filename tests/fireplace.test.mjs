@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import * as THREE from '../vendor/three.module.js';
 import {createFireplace,panoramaDirection} from '../fireplace.js';
 
@@ -7,7 +8,8 @@ import {createFireplace,panoramaDirection} from '../fireplace.js';
 // Shader compilation, colour matching, feathering and document visibility are
 // verified in the browser rather than simulated by this fixture.
 const panoramaSize={width:1774,height:887};
-const region={left:574,right:676,top:493,bottom:567};
+const region={left:552,right:700,top:476,bottom:585};
+const atlasMetadata=JSON.parse(await readFile(new URL('../assets/fireplace/natural-fire.json',import.meta.url),'utf8'));
 const rotation=1.5;
 const center=panoramaDirection(625/panoramaSize.width,530/panoramaSize.height)
   .applyAxisAngle(new THREE.Vector3(0,1,0),rotation);
@@ -16,12 +18,15 @@ function assertVector(actual,expected,message,tolerance=1e-6) {
   assert.ok(actual.distanceTo(expected)<tolerance,`${message}: ${actual.toArray()} vs ${expected.toArray()}`);
 }
 
-function fixture() {
-  // A PMREM texture has three cube faces across and four down. No WebGL or
-  // texture upload is needed to test the geometry and frame scheduling.
-  const environment=new THREE.Texture({width:768,height:1024});
-  const fire=createFireplace({environment,rotation});
+function fixture({missingAtlas=false}={}) {
+  // TextureLoader supplies an image and one initial upload request. The frame
+  // loop should subsequently change uniforms, without uploading this atlas again.
+  const atlas=missingAtlas?null:new THREE.Texture({width:atlasMetadata.atlas_size[0],height:atlasMetadata.atlas_size[1]});
+  if(atlas)atlas.needsUpdate=true;
+  const fire=createFireplace({atlas,rotation});
   const world=new THREE.Scene();
+  world.background=new THREE.Texture();
+  world.environment=new THREE.Texture();
   world.add(fire.mesh);
   const camera=new THREE.PerspectiveCamera(38,1.6,.1,150);
   function look(position,direction=center) {
@@ -30,8 +35,50 @@ function fixture() {
     camera.updateMatrixWorld(true);
   }
   look(new THREE.Vector3(3,5,12));
-  return {fire,world,camera,environment,look};
+  return {fire,world,camera,atlas,look};
 }
+
+// Read dimensions from the actual WebP container rather than trusting the
+// metadata or requiring a browser/image library in the repository's test runner.
+function webpDimensions(bytes) {
+  assert.equal(bytes.toString('ascii',0,4),'RIFF');
+  assert.equal(bytes.toString('ascii',8,12),'WEBP');
+  for(let offset=12;offset+8<=bytes.length;) {
+    const type=bytes.toString('ascii',offset,offset+4),size=bytes.readUInt32LE(offset+4),start=offset+8;
+    assert.ok(start+size<=bytes.length,'WebP chunks must not be truncated');
+    if(type==='VP8X')return [bytes.readUIntLE(start+4,3)+1,bytes.readUIntLE(start+7,3)+1];
+    if(type==='VP8 ') {
+      assert.equal(bytes.toString('hex',start+3,start+6),'9d012a');
+      return [bytes.readUInt16LE(start+6)&0x3fff,bytes.readUInt16LE(start+8)&0x3fff];
+    }
+    if(type==='VP8L') {
+      assert.equal(bytes[start],0x2f);
+      const packed=bytes.readUInt32LE(start+1);
+      return [(packed&0x3fff)+1,((packed>>>14)&0x3fff)+1];
+    }
+    offset=start+size+(size%2);
+  }
+  assert.fail('WebP has no decodable image-dimension chunk');
+}
+
+test('the built atlas matches its declared grid, original reference and natural loop timing',async()=>{
+  const asset=await readFile(new URL('../assets/fireplace/natural-fire.webp',import.meta.url));
+  assert.deepEqual(webpDimensions(asset),atlasMetadata.atlas_size);
+  assert.deepEqual(atlasMetadata.atlas_size,[2016,1820]);
+  assert.deepEqual(atlasMetadata.frame_size,[248,136]);
+  assert.deepEqual(atlasMetadata.source_size,[498,273]);
+  assert.equal(atlasMetadata.source_sha256,'cb0fad8b29ec252c425f0f26ded08698f6279fd3b6f37601f45320221a315295');
+  assert.equal(atlasMetadata.frames,99);
+  assert.equal(atlasMetadata.frame_duration_ms,90);
+  assert.equal(atlasMetadata.frames*atlasMetadata.frame_duration_ms,8910);
+  assert.equal(atlasMetadata.columns,8);
+  assert.equal(atlasMetadata.rows,13);
+  assert.equal(atlasMetadata.gutter,2);
+  assert.equal(atlasMetadata.columns*(atlasMetadata.frame_size[0]+2*atlasMetadata.gutter),atlasMetadata.atlas_size[0]);
+  assert.equal(atlasMetadata.rows*(atlasMetadata.frame_size[1]+2*atlasMetadata.gutter),atlasMetadata.atlas_size[1]);
+  assert.ok(atlasMetadata.frames<=atlasMetadata.columns*atlasMetadata.rows);
+  assert.ok(atlasMetadata.frames>(atlasMetadata.rows-1)*atlasMetadata.columns,'only the final row may have spare cells');
+});
 
 test('panorama coordinates use the expected cardinal directions and image top/bottom',()=>{
   for(const [u,v,expected] of [
@@ -106,21 +153,66 @@ test('idle fireplace updates are capped at 24 per second while time advances',()
   } finally {fire.dispose();}
 });
 
-test('reduced motion restores the static panorama, remains idle and resumes animation when disabled',()=>{
+test('reduced motion shows a stable photographed fire, remains idle and resumes animation when disabled',()=>{
   const {fire,camera}=fixture();
   try {
     assert.equal(fire.update(0,camera),true);
     assert.equal(fire.update(100,camera),true);
     const before=fire.mesh.material.uniforms.time.value;
-    assert.equal(fire.update(110,camera,true),true,'hiding the effect requires one redraw');
-    assert.equal(fire.mesh.visible,false);
+    assert.equal(fire.update(110,camera,true),true,'switching to the stable first frame requires one redraw');
+    assert.equal(fire.mesh.visible,true,'reduced motion should retain the new photographed fire');
+    assert.equal(fire.mesh.material.uniforms.time.value,0);
     for(const time of [200,500,1000]) {
       assert.equal(fire.update(time,camera,true),false,'reduced motion must not keep rendering decorative frames');
-      assert.equal(fire.mesh.material.uniforms.time.value,before);
+      assert.equal(fire.mesh.material.uniforms.time.value,0);
     }
     assert.equal(fire.update(1100,camera,false),true);
     assert.equal(fire.mesh.visible,true);
     assert.ok(fire.mesh.material.uniforms.time.value>before);
+  } finally {fire.dispose();}
+});
+
+test('reduced-motion startup stays on frame zero and a quick preference change redraws immediately',()=>{
+  const {fire,camera}=fixture();
+  try {
+    assert.equal(fire.update(1000,camera,true),true);
+    assert.equal(fire.mesh.visible,true);
+    assert.equal(fire.mesh.material.uniforms.time.value,0);
+    assert.equal(fire.update(1010,camera,true),false);
+    assert.equal(fire.update(1020,camera,false),true);
+    assert.equal(fire.update(1025,camera,true),true);
+    assert.equal(fire.mesh.material.uniforms.time.value,0);
+    assert.equal(fire.update(1030,camera,false),true,'preference changes must bypass the decorative frame-rate limit');
+  } finally {fire.dispose();}
+});
+
+test('animation uses one stable filtered atlas without recurring texture uploads or shader recompilation',()=>{
+  const {fire,camera,atlas}=fixture();
+  try {
+    assert.equal(atlas.colorSpace,THREE.SRGBColorSpace);
+    assert.equal(atlas.generateMipmaps,false,'mipmaps can blend neighbouring atlas cells beyond the gutters');
+    assert.equal(atlas.minFilter,THREE.LinearFilter);
+    assert.equal(atlas.magFilter,THREE.LinearFilter);
+    const before={texture:atlas.version,source:atlas.source.version,material:fire.mesh.material.version};
+    for(const time of [0,45,90,1000,8820,8910,8955,17820]) {
+      fire.update(time,camera);
+      assert.equal(fire.mesh.material.uniforms.fireAtlas.value,atlas,'frame changes must keep the same atlas binding');
+      assert.deepEqual({texture:atlas.version,source:atlas.source.version,material:fire.mesh.material.version},before);
+    }
+  } finally {fire.dispose();}
+});
+
+test('a missing atlas leaves the original panorama available without decorative redraws',()=>{
+  const {fire,world,camera}=fixture({missingAtlas:true});
+  const background=world.background,environment=world.environment;
+  try {
+    assert.equal(fire.mesh.visible,false);
+    for(const reduced of [false,true,false])for(const time of [0,100,1000]) {
+      assert.equal(fire.update(time,camera,reduced),false);
+      assert.equal(fire.mesh.visible,false);
+      assert.equal(world.background,background);
+      assert.equal(world.environment,environment);
+    }
   } finally {fire.dispose();}
 });
 
@@ -141,17 +233,18 @@ test('looking away stops decorative redraws and returning resumes them at the cu
   } finally {f.fire.dispose();}
 });
 
-test('dispose removes the patch and releases owned resources once without disposing the shared panorama environment',()=>{
+test('dispose removes the patch and releases the owned atlas once without disposing the panorama environment',()=>{
   const f=fixture();
-  const disposals={geometry:0,material:0,environment:0};
+  const disposals={geometry:0,material:0,atlas:0,environment:0};
   f.fire.mesh.geometry.addEventListener('dispose',()=>disposals.geometry++);
   f.fire.mesh.material.addEventListener('dispose',()=>disposals.material++);
-  f.environment.addEventListener('dispose',()=>disposals.environment++);
+  f.atlas.addEventListener('dispose',()=>disposals.atlas++);
+  f.world.environment.addEventListener('dispose',()=>disposals.environment++);
   f.fire.update(0,f.camera);
   const lastTime=f.fire.mesh.material.uniforms.time.value;
   f.fire.dispose();f.fire.dispose();
   assert.equal(f.fire.mesh.parent,null);
-  assert.deepEqual(disposals,{geometry:1,material:1,environment:0});
+  assert.deepEqual(disposals,{geometry:1,material:1,atlas:1,environment:0});
   assert.equal(f.fire.update(1000,f.camera),false);
   assert.equal(f.fire.mesh.material.uniforms.time.value,lastTime);
 });

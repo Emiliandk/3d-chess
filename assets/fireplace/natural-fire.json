@@ -1,0 +1,22 @@
+{
+  "source": "User-provided reference 04, 22fd9175f09fced6f5cde4421812d835.gif",
+  "source_sha256": "cb0fad8b29ec252c425f0f26ded08698f6279fd3b6f37601f45320221a315295",
+  "source_size": [
+    498,
+    273
+  ],
+  "frame_size": [
+    248,
+    136
+  ],
+  "frames": 99,
+  "frame_duration_ms": 90,
+  "columns": 8,
+  "rows": 13,
+  "gutter": 2,
+  "atlas_size": [
+    2016,
+    1820
+  ],
+  "encoding": "WebP quality 88, Lanczos downsample; no upscaling"
+}
