@@ -62,8 +62,11 @@ Regelgrundlag: https://handbook.fide.com/chapter/E012023, artikel 5 og 9.
 
 KONTROL UDFØRT 8. SEPTEMBER 2026
 ------------------------------
-- 47 automatiske tests består, inklusive gemning og atomisk gendannelse,
+- 53 automatiske tests består, inklusive gemning og atomisk gendannelse,
   rokade, en passant, bondeforvandling, remis, fortryd og forældede motorsvar.
+- Seks integrationstests kører main.js med de rigtige spil- og lagringsmoduler.
+  De kontrollerer genoptagelse, nulstilling, farveskift og annullering. DOM,
+  renderer og motorsvar er testdoubler; dette er ikke en WebGL-browserkontrol.
 - Kameraberegninger kontrollerer Spilvisning og Rumvisning, smalle formater,
   flere synsvinkler og størrelsesændring. De erstatter ikke visuel WebGL-QA.
 - Et levende API-kald ved søgedybde 3 gav et lovligt svar ved den valgte dybde.
