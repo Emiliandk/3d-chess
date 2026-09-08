@@ -3,7 +3,7 @@
 
 En opdatering af det eksisterende chess.emilian.dk med et rigtigt 3D-bræt,
 Staunton-brikker, træmaterialer og en varm biblioteksbaggrund.
-2D-visningen er fjernet. De oprindelige skakregler og FEN-rettelsen er bevaret.
+2D-visningen er fjernet. Skakreglerne omfatter også remis og gemte partier.
 
 BETJENING
 ---------
@@ -11,6 +11,12 @@ BETJENING
 - Hold museknappen nede og træk for at dreje 360 grader og ændre højdevinklen.
 - Rul med musehjulet for at zoome. Kameraet holdes over bordet.
 - På touch: Træk med én finger; knib med to fingre for at zoome.
+- Spilvisning giver brættet mere plads og vælges som udgangspunkt på mobil.
+  Rumvisning viser bordet og omgivelserne. Begge visninger kan drejes frit.
+- Partiet og dine valg gemmes automatisk lokalt i denne browser. Vælg Fortsæt
+  dit parti efter genindlæsning. En ny start eller farveskift kræver bekræftelse,
+  når der er spillet træk. Fortryd og bondeforvandling bevares efter gendannelse.
+  Hvis browseren afviser lagring, vises en besked; spillet kan stadig fortsætte.
 - Nulstil visning vender tilbage til spillerens side og tilpasser brættet.
 - Fuldskærm under brættet viser hele spillet, inklusive sidepanel og dialoger.
   Brug Afslut fuldskærm eller Esc for at vende tilbage. Spillet fortsætter uden
@@ -37,6 +43,31 @@ og analyseindstillinger sendes. Der følger ingen lokal Stockfish-motor med.
 Fejl fra API'et vises med mulighed for at prøve samme stilling igen.
 Fortryd, nyt spil og ændret motorstyrke annullerer igangværende analyser, og
 forældede svar får ikke lov at ændre en nyere stilling.
+Nye partier starter ved søgedybde 3. De seks valg går op til dybde 18 og er
+søgeindstillinger, ikke Elo-niveauer. Stockfish kan stadig spille stærkt på
+laveste indstilling. Gemte partier bevarer deres valgte søgedybde.
+
+REMIS
+-----
+Pat og utilstrækkeligt materiale afslutter partiet automatisk. Ved tredje
+gentagelse eller 50 træk uden bondetræk eller slag kan spilleren kræve remis,
+også på grundlag af et påtænkt lovligt træk. Det påtænkte træk udføres ikke.
+Femte gentagelse og 75 træk uden bondetræk eller slag giver automatisk remis;
+skakmat har forrang. Computeren kræver remis, når muligheden opstår.
+Gentagelse tager højde for tur, rokaderettigheder og lovlig en passant.
+Materialekontrollen omfatter bare konger, én løber eller springer mod en bar
+konge og stillinger med kun konger og løbere på samme feltfarve. Den afgør
+ikke alle tænkelige døde stillinger, eksempelvis låste bondeformationer.
+Regelgrundlag: https://handbook.fide.com/chapter/E012023, artikel 5 og 9.
+
+KONTROL UDFØRT 8. SEPTEMBER 2026
+------------------------------
+- 47 automatiske tests består, inklusive gemning og atomisk gendannelse,
+  rokade, en passant, bondeforvandling, remis, fortryd og forældede motorsvar.
+- Kameraberegninger kontrollerer Spilvisning og Rumvisning, smalle formater,
+  flere synsvinkler og størrelsesændring. De erstatter ikke visuel WebGL-QA.
+- Et levende API-kald ved søgedybde 3 gav et lovligt svar ved den valgte dybde.
+- Den åbne grafikkontrol nedenfor gælder fortsat denne ændring.
 
 KONTROL UDFØRT 7. SEPTEMBER 2026
 ------------------------------
@@ -78,13 +109,11 @@ eller interaktivt godkendt i en browser med grafikadgang. Afprøv grenens previe
 på desktop og mobil før merge til main. Den nye kode er ikke en 2D-fallback:
 mangler WebGL, vises en forklaring, og spilkontrollerne deaktiveres.
 
-De oprindelige remisbegrænsninger er bevaret: pat registreres, men gentagelse,
-50-træksreglen og utilstrækkeligt materiale er ikke implementeret.
-
 FILER OG RETTIGHEDER
 -------------------
 index.html, style.css, main.js: brugerflade.
-game.js: de eksisterende regler og Chess-API-adapteren.
+game.js: skakregler, remis, gendannelse og Chess-API-adapteren.
+game-storage.js: lokal lagring med fejlhåndtering.
 scene.js, board.js, camera.js: 3D-scene, fysisk spilleflade, klik og kamera.
 fullscreen.js: browserens fuldskærmsfunktion, uafhængigt af skakmotoren.
 assets/: konverterede modeller, træteksturer og genereret biblioteksbillede.

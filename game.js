@@ -3,6 +3,29 @@
  * No DOM or renderer dependencies. r=0 is rank 8; c=0 is file a.
  * Every emitted state is a detached copy, safe for a renderer to retain.
  */
+
+// Conservative material-only dead-position detection. This deliberately does
+// not claim to solve blocked pawn fortresses or other positional deadness.
+export function hasInsufficientMaterial(board) {
+  const material=[];
+  for (let r=0;r<8;r++) for (let c=0;c<8;c++) {
+    const piece=board[r][c];
+    if (piece && piece.type!=='k') material.push({type:piece.type,squareColor:(r+c)%2});
+  }
+  if (!material.length) return true;
+  if (material.length===1 && ['b','n'].includes(material[0].type)) return true;
+  return material.every(piece=>piece.type==='b' && piece.squareColor===material[0].squareColor);
+}
+
+// FIDE 5.2.2 and 9.6: claimed draws are handled separately. A mate on the
+// 150th reversible halfmove must not be overwritten by the 75-move rule.
+export function adjudicatePosition({board,inCheck,hasLegalMove,repetitions,halfmoveClock}) {
+  if (!hasLegalMove) return {result:inCheck ? 'checkmate' : 'stalemate',drawReason:null};
+  const drawReason=hasInsufficientMaterial(board) ? 'insufficient-material'
+    : repetitions>=5 ? 'fivefold' : halfmoveClock>=150 ? 'seventy-five-move' : null;
+  return {result:drawReason ? 'draw' : null,drawReason};
+}
+
 export function createGame({ onChange = () => {}, onPromotion } = {}) {
   const CHESS_API_URL = 'https://chess-api.com/v1';
   const files = ['a','b','c','d','e','f','g','h'];
@@ -15,6 +38,11 @@ export function createGame({ onChange = () => {}, onPromotion } = {}) {
   let snapshots = [];
   let lastMove = null;
   let gameOver = false;
+  let result = null;
+  let drawReason = null;
+  let drawClaim = null;
+  let halfmoveClock = 0;
+  let positionKeys = [];
   let pendingPromotion = null;
   let humanColor = 'w';
   let engineColor = 'b';
@@ -29,8 +57,9 @@ export function createGame({ onChange = () => {}, onPromotion } = {}) {
   let engineSearchId = 0;
   let engineTimer = null;
   let started = false;
-  let targetDepth = 18;
+  let targetDepth = 3;
   let engineHasResponded = false;
+  let replaying = false;
 
   function getState() {
     const check = inCheck(board,turn);
@@ -52,14 +81,15 @@ export function createGame({ onChange = () => {}, onPromotion } = {}) {
       },
       canUndo: snapshots.length > 0 && moveLog.some(move => move.color===humanColor),
       inCheck: check, checkSquare: check ? findKing(board,turn) : null,
-      result: gameOver ? (check ? 'checkmate' : 'stalemate') : null,
+      result, drawReason, halfmoveClock, drawClaims: availableDrawClaims(),
       fen: boardToFEN()
     };
   }
 
-  function render() { onChange(getState()); }
+  function render() { if (!replaying) onChange(getState()); }
 
   function scheduleEngineMove(delay = 30) {
+    if (replaying) return;
     clearTimeout(engineTimer);
     if (!started || gameOver || turn!==engineColor) return;
     engineTimer = setTimeout(() => {
@@ -93,17 +123,17 @@ export function createGame({ onChange = () => {}, onPromotion } = {}) {
     return { r: 8 - Number(text[1]), c: files.indexOf(text[0]) };
   }
 
-  function castlingRights() {
+  function castlingRights(b=board) {
     let rights='';
-    const wk=board[7]?.[4];
+    const wk=b[7]?.[4];
     if (wk && wk.color==='w' && wk.type==='k' && !wk.moved) {
-      const rh=board[7][7], ra=board[7][0];
+      const rh=b[7][7], ra=b[7][0];
       if (rh && rh.color==='w' && rh.type==='r' && !rh.moved) rights+='K';
       if (ra && ra.color==='w' && ra.type==='r' && !ra.moved) rights+='Q';
     }
-    const bk=board[0]?.[4];
+    const bk=b[0]?.[4];
     if (bk && bk.color==='b' && bk.type==='k' && !bk.moved) {
-      const rh=board[0][7], ra=board[0][0];
+      const rh=b[0][7], ra=b[0][0];
       if (rh && rh.color==='b' && rh.type==='r' && !rh.moved) rights+='k';
       if (ra && ra.color==='b' && ra.type==='r' && !ra.moved) rights+='q';
     }
@@ -114,29 +144,29 @@ export function createGame({ onChange = () => {}, onPromotion } = {}) {
   // actually make a legal en-passant capture. This matches chess.js' normal
   // FEN output and avoids strict API validators rejecting otherwise harmless
   // target squares after a two-square pawn push.
-  function fenEnPassantSquare() {
-    if (!enPassant || enPassant.captureColor!==turn) return '-';
+  function fenEnPassantSquare(b=board,side=turn,epState=enPassant) {
+    if (!epState || epState.captureColor!==side) return '-';
 
-    const fromRow=enPassant.pawnR;
+    const fromRow=epState.pawnR;
     for (const dc of [-1,1]) {
-      const fromCol=enPassant.pawnC+dc;
+      const fromCol=epState.pawnC+dc;
       if (!inBounds(fromRow,fromCol)) continue;
-      const p=board[fromRow][fromCol];
-      if (!p || p.color!==turn || p.type!=='p') continue;
-      const canCapture=legalMovesFor(board,fromRow,fromCol,enPassant).some(move =>
-        move.enPassant && move.r===enPassant.r && move.c===enPassant.c
+      const p=b[fromRow][fromCol];
+      if (!p || p.color!==side || p.type!=='p') continue;
+      const canCapture=legalMovesFor(b,fromRow,fromCol,epState).some(move =>
+        move.enPassant && move.r===epState.r && move.c===epState.c
       );
-      if (canCapture) return coord(enPassant.r,enPassant.c);
+      if (canCapture) return coord(epState.r,epState.c);
     }
     return '-';
   }
 
-  function boardToFEN() {
+  function positionKey(b=board,side=turn,epState=enPassant) {
     const rows=[];
     for (let r=0;r<8;r++) {
       let row='', empty=0;
       for (let c=0;c<8;c++) {
-        const p=board[r][c];
+        const p=b[r][c];
         if (!p) { empty++; continue; }
         if (empty) { row+=empty; empty=0; }
         let letter=p.type;
@@ -146,9 +176,11 @@ export function createGame({ onChange = () => {}, onPromotion } = {}) {
       if (empty) row+=empty;
       rows.push(row);
     }
-    const ep=fenEnPassantSquare();
-    const fullmove=Math.floor(moveLog.length/2)+1;
-    return `${rows.join('/')} ${turn} ${castlingRights()} ${ep} 0 ${fullmove}`;
+    return `${rows.join('/')} ${side} ${castlingRights(b)} ${fenEnPassantSquare(b,side,epState)}`;
+  }
+
+  function boardToFEN() {
+    return `${positionKey()} ${halfmoveClock} ${Math.floor(moveLog.length/2)+1}`;
   }
 
   function validateFenForApi(fen) {
@@ -205,11 +237,13 @@ export function createGame({ onChange = () => {}, onPromotion } = {}) {
 
   async function startEngine() {
     if (engineLoading || engineReady) return;
+    const startupId=engineSearchId;
     engineLoading=true; engineFailed=false; engineErrorMessage='';
     render();
     // As in the original, no separate paid/work-consuming health request.
     // ready means prepared to request; hasResponded records a verified reply.
     await Promise.resolve();
+    if (startupId!==engineSearchId || !started) return;
     if (typeof navigator!=='undefined' && navigator.onLine===false) {
       failEngine('Ingen internetforbindelse. Chess-API.com kræver internet.');
       return;
@@ -245,7 +279,12 @@ export function createGame({ onChange = () => {}, onPromotion } = {}) {
   }
 
   async function maybeRequestEngineMove() {
-    if (!started || gameOver || turn!==engineColor || engineThinking) return;
+    if (!started || replaying || gameOver || turn!==engineColor || engineThinking) return;
+    // This casual opponent always exercises an available draw claim. Replay
+    // deliberately skips that policy: only recorded claims end restored games.
+    const claims=availableDrawClaims();
+    if (claims.current.length && acceptDrawClaim(turn,null)) return;
+    if (claims.intended.length && acceptDrawClaim(turn,claims.intended[0].uci)) return;
     if (!engineReady) { render(); return; }
 
     const searchId=++engineSearchId;
@@ -508,11 +547,96 @@ export function createGame({ onChange = () => {}, onPromotion } = {}) {
     return false;
   }
 
+  function enPassantAfter(piece,from,move) {
+    return piece.type==='p' && Math.abs(move.r-from.r)===2 ? {
+      r:(move.r+from.r)/2,c:from.c,pawnR:move.r,pawnC:move.c,captureColor:enemy(piece.color)
+    } : null;
+  }
+
+  function reasonsForPosition(key,clock,counts,upcoming=false) {
+    const reasons=[];
+    if ((counts.get(key) || 0)+(upcoming ? 1 : 0)>=3) reasons.push('threefold');
+    if (clock>=100) reasons.push('fifty-move');
+    return reasons;
+  }
+
+  function repetitionCounts() {
+    const counts=new Map();
+    for (const key of positionKeys) counts.set(key,(counts.get(key) || 0)+1);
+    return counts;
+  }
+
+  // All preview inputs are explicit. In particular, a hypothetical en-passant
+  // target must not read or overwrite the live game's target or move history.
+  function intendedReasons(from,move,promotion,counts) {
+    const piece=board[from.r][from.c];
+    const captured=move.enPassant || board[move.r][move.c];
+    const nextBoard=applyMoveToBoard(board,from,move,promotion);
+    const key=positionKey(nextBoard,enemy(turn),enPassantAfter(piece,from,move));
+    const clock=piece.type==='p' || captured ? 0 : halfmoveClock+1;
+    return reasonsForPosition(key,clock,counts,true);
+  }
+
+  function availableDrawClaims() {
+    const claims={current:[],intended:[]};
+    if (gameOver || pendingPromotion) return claims;
+    const counts=repetitionCounts();
+    claims.current=reasonsForPosition(positionKeys.at(-1),halfmoveClock,counts);
+    // The normal opening needs no speculative move search on every UI update.
+    if (halfmoveClock<99 && ![...counts.values()].some(count=>count>=2)) return claims;
+    for (let r=0;r<8;r++) for (let c=0;c<8;c++) {
+      const piece=board[r][c];
+      if (!piece || piece.color!==turn) continue;
+      for (const move of legalMovesFor(board,r,c)) {
+        const promotions=piece.type==='p' && (move.r===0 || move.r===7) ? ['q','r','b','n'] : [null];
+        for (const promotion of promotions) {
+          const reasons=intendedReasons({r,c},move,promotion,counts);
+          if (reasons.length) claims.intended.push({uci:coord(r,c)+coord(move.r,move.c)+(promotion || ''),reasons});
+        }
+      }
+    }
+    return claims;
+  }
+
+  function acceptDrawClaim(claimant,intendedUci=null,requestedReason=null) {
+    if (gameOver || pendingPromotion || claimant!==turn) return false;
+    const counts=repetitionCounts();
+    let reasons;
+    if (intendedUci===null) {
+      reasons=reasonsForPosition(positionKeys.at(-1),halfmoveClock,counts);
+    } else {
+      if (typeof intendedUci!=='string' || !/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(intendedUci)) return false;
+      const from=squareFromUci(intendedUci.slice(0,2));
+      const to=squareFromUci(intendedUci.slice(2,4));
+      const piece=board[from.r][from.c];
+      if (!piece || piece.color!==turn) return false;
+      const promotion=piece.type==='p' && (to.r===0 || to.r===7);
+      if (promotion!==Boolean(intendedUci[4])) return false;
+      const move=legalMovesFor(board,from.r,from.c).find(candidate=>candidate.r===to.r && candidate.c===to.c);
+      if (!move) return false;
+      reasons=intendedReasons(from,move,intendedUci[4] || null,counts);
+    }
+    const reason=requestedReason || reasons[0];
+    if (!reason || !reasons.includes(reason)) return false;
+    if (!replaying) cancelEngineSearch();
+    result='draw'; drawReason=reason; gameOver=true;
+    drawClaim={claimant,reason,intendedUci};
+    selected=null; legalTargets=[];
+    render();
+    return true;
+  }
+
+  function claimDraw(intendedUci) {
+    if (turn!==humanColor || engineThinking) return false;
+    return acceptDrawClaim(humanColor,intendedUci===undefined ? null : intendedUci);
+  }
+
   function snapshot() {
     return {
       board: cloneBoard(board), turn, enPassant: enPassant ? {...enPassant} : null,
       moveLog: moveLog.map(x=>({...x})), lastMove: lastMove ? JSON.parse(JSON.stringify(lastMove)) : null,
-      gameOver
+      gameOver, result, drawReason, drawClaim:drawClaim ? {...drawClaim} : null,
+      halfmoveClock, positionKeys:[...positionKeys]
     };
   }
 
@@ -522,7 +646,9 @@ export function createGame({ onChange = () => {}, onPromotion } = {}) {
     enPassant=s.enPassant ? {...s.enPassant}:null;
     moveLog=s.moveLog.map(x=>({...x}));
     lastMove=s.lastMove ? JSON.parse(JSON.stringify(s.lastMove)):null;
-    gameOver=s.gameOver;
+    gameOver=s.gameOver; result=s.result; drawReason=s.drawReason;
+    drawClaim=s.drawClaim ? {...s.drawClaim} : null;
+    halfmoveClock=s.halfmoveClock; positionKeys=[...s.positionKeys];
     selected=null; legalTargets=[]; pendingPromotion=null;
     render();
   }
@@ -551,13 +677,8 @@ export function createGame({ onChange = () => {}, onPromotion } = {}) {
 
     board=applyMoveToBoard(board,from,move,promotionType);
 
-    if (pieceBefore.type==='p' && Math.abs(move.r-from.r)===2) {
-      enPassant={
-        r:(move.r+from.r)/2, c:from.c,
-        pawnR:move.r, pawnC:move.c,
-        captureColor: enemy(pieceBefore.color)
-      };
-    } else enPassant=null;
+    enPassant=enPassantAfter(pieceBefore,from,move);
+    halfmoveClock=pieceBefore.type==='p' || captured ? 0 : halfmoveClock+1;
 
     const previousTurn=turn;
     turn=enemy(turn);
@@ -567,14 +688,18 @@ export function createGame({ onChange = () => {}, onPromotion } = {}) {
     const check=inCheck(board,turn);
     const hasMove=anyLegalMove(turn);
     const mate=check && !hasMove;
-    const stalemate=!check && !hasMove;
 
     moveLog.push({
       color: previousTurn,
+      uci: coord(from.r,from.c) + coord(move.r,move.c) + (promotionType || ''),
       text: notationFor(from,move,pieceBefore,captured,promotionType,check,mate)
     });
 
-    if (mate || stalemate) gameOver=true;
+    positionKeys.push(positionKey());
+    const repeats=positionKeys.filter(key=>key===positionKeys.at(-1)).length;
+    const terminal=adjudicatePosition({board,inCheck:check,hasLegalMove:hasMove,repetitions:repeats,halfmoveClock});
+    result=terminal.result; drawReason=terminal.drawReason; gameOver=result!==null;
+    if (gameOver && !replaying) cancelEngineSearch();
     render();
     scheduleEngineMove();
   }
@@ -628,7 +753,7 @@ export function createGame({ onChange = () => {}, onPromotion } = {}) {
 
   function normalizeDepth(value) {
     const n=Number(value);
-    return Number.isFinite(n) ? Math.max(1,Math.min(18,Math.round(n))) : 18;
+    return Number.isFinite(n) ? Math.max(1,Math.min(18,Math.round(n))) : 3;
   }
 
   function newGame(options = {}) {
@@ -638,6 +763,7 @@ export function createGame({ onChange = () => {}, onPromotion } = {}) {
     engineColor=enemy(humanColor);
     board=initialBoard(); turn='w'; selected=null; legalTargets=[]; enPassant=null;
     moveLog=[]; snapshots=[]; lastMove=null; gameOver=false; pendingPromotion=null;
+    result=null; drawReason=null; drawClaim=null; halfmoveClock=0; positionKeys=[positionKey()];
     engineEval=null; engineDepth=null;
     render();
     if (started && engineFailed && !engineLoading) void startEngine();
@@ -678,5 +804,70 @@ export function createGame({ onChange = () => {}, onPromotion } = {}) {
     return startEngine();
   }
 
-  return {getState,selectSquare,clearSelection,promote,cancelPromotion,newGame,undo,setDepth,retryEngine,start};
+  // Store the decisions, not a trusted board snapshot. Replaying from the
+  // initial position reconstructs move flags, en passant, history and undo.
+  function exportGame() {
+    return {version:1,humanColor,targetDepth,moves:moveLog.map(move=>move.uci),
+      ...(drawClaim ? {drawClaim:{...drawClaim}} : {})};
+  }
+
+  function restoreGame(record) {
+    if (!record || typeof record!=='object' || Array.isArray(record) ||
+        record.version!==1 || !['w','b'].includes(record.humanColor) ||
+        !Number.isInteger(record.targetDepth) || record.targetDepth<1 || record.targetDepth>18 ||
+        !Array.isArray(record.moves) || record.moves.length>1000) return false;
+    const savedClaim=record.drawClaim;
+    if (savedClaim!==undefined && (!savedClaim || typeof savedClaim!=='object' || Array.isArray(savedClaim) ||
+        !['w','b'].includes(savedClaim.claimant) || !['threefold','fifty-move'].includes(savedClaim.reason) ||
+        !(savedClaim.intendedUci===null || (typeof savedClaim.intendedUci==='string' && /^[a-h][1-8][a-h][1-8][qrbn]?$/.test(savedClaim.intendedUci))))) return false;
+    const moves=Array.from(record.moves);
+    if (!moves.every(uci=>typeof uci==='string' && /^[a-h][1-8][a-h][1-8][qrbn]?$/.test(uci))) return false;
+
+    // Validation is synchronous and silent. Preserve even transient selection
+    // and pending searches until the entire transcript has proved legal.
+    const previous={board,turn,selected,legalTargets,enPassant,moveLog,snapshots,lastMove,gameOver,pendingPromotion,result,drawReason,drawClaim,halfmoveClock,positionKeys};
+    let recovered=null;
+    replaying=true;
+    try {
+      board=initialBoard(); turn='w'; selected=null; legalTargets=[]; enPassant=null;
+      moveLog=[]; snapshots=[]; lastMove=null; gameOver=false; pendingPromotion=null;
+      result=null; drawReason=null; drawClaim=null; halfmoveClock=0; positionKeys=[positionKey()];
+      for (const uci of moves) {
+        if (gameOver) return false;
+        const from=squareFromUci(uci.slice(0,2));
+        const to=squareFromUci(uci.slice(2,4));
+        const piece=board[from.r][from.c];
+        if (!piece || piece.color!==turn) return false;
+        const promotion=piece.type==='p' && (to.r===0 || to.r===7);
+        if (promotion!==Boolean(uci[4])) return false;
+        const move=legalMovesFor(board,from.r,from.c).find(candidate=>candidate.r===to.r && candidate.c===to.c);
+        if (!move) return false;
+        executeMove(from,move,uci[4] || null);
+      }
+      if (savedClaim && !acceptDrawClaim(savedClaim.claimant,savedClaim.intendedUci,savedClaim.reason)) return false;
+      recovered={board,turn,enPassant,moveLog,snapshots,lastMove,gameOver,result,drawReason,drawClaim,halfmoveClock,positionKeys};
+    } finally {
+      ({board,turn,selected,legalTargets,enPassant,moveLog,snapshots,lastMove,gameOver,pendingPromotion,result,drawReason,drawClaim,halfmoveClock,positionKeys}=previous);
+      replaying=false;
+    }
+
+    cancelEngineSearch();
+    started=false;
+    humanColor=record.humanColor; engineColor=enemy(humanColor); targetDepth=record.targetDepth;
+    ({board,turn,enPassant,moveLog,snapshots,lastMove,gameOver,result,drawReason,drawClaim,halfmoveClock,positionKeys}=recovered);
+    selected=null; legalTargets=[]; pendingPromotion=null;
+    engineReady=false; engineLoading=false; engineFailed=false; engineThinking=false;
+    engineEval=null; engineDepth=null; engineErrorMessage=''; engineHasResponded=false;
+    render();
+    return true;
+  }
+
+  function dispose() {
+    started=false;
+    cancelEngineSearch();
+    engineLoading=false;
+  }
+
+  positionKeys=[positionKey()];
+  return {getState,claimDraw,selectSquare,clearSelection,promote,cancelPromotion,newGame,undo,setDepth,retryEngine,start,exportGame,restoreGame,dispose};
 }

@@ -51,7 +51,7 @@ test('initial legal moves and detached board/state snapshots', () => {
   state.legalTargets.push({r:0,c:0});
   state.engine.targetDepth=1;
   assert.equal(g.getState().board[7][4].type,'k');
-  assert.equal(g.getState().engine.targetDepth,18);
+  assert.equal(g.getState().engine.targetDepth,3);
   assert.equal(g.getState().fen,'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
   assert.doesNotThrow(()=>g.selectSquare(-1,10));
 });
@@ -243,4 +243,18 @@ test('checkmate locks further moves and undo restores a playable position', asyn
   g.undo();
   assert.equal(g.getState().gameOver,false);
   assert.equal(g.getState().moveLog.length,2);
+});
+
+test('fresh games request short analysis while saved motor settings remain intact', async()=>{
+  const requests=fixtureEngine(['e7e5','b8c6']);
+  const g=game();
+  await g.start();
+  await fullTurn(g,'e2','e4');
+  assert.equal(requests[0].body.depth,3);
+  const saved={...g.exportGame(),targetDepth:18};
+  assert.equal(g.restoreGame(saved),true);
+  assert.equal(g.getState().engine.targetDepth,18);
+  await g.start();
+  await fullTurn(g,'g1','f3');
+  assert.equal(requests[1].body.depth,18);
 });

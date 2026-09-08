@@ -17,13 +17,24 @@
   <main class="app">
     <section class="game-area" aria-labelledby="board-title">
       <div class="board-heading"><div><p class="eyebrow">VED BRÆTTET</p><h1 id="board-title">Tag plads. Giv modspil.</h1></div><span class="view-label">3D · FRI SYNSVINKEL</span></div>
+      <section class="resume-game" id="resumeGame" aria-labelledby="resumeTitle" hidden>
+        <div><h2 id="resumeTitle">Dit sidste parti venter.</h2><p>Fortsæt fra den gemte stilling på denne enhed.</p></div>
+        <div class="resume-actions"><button class="button primary" id="resumeButton" type="button" disabled>Fortsæt dit parti</button><button class="button secondary" id="freshButton" type="button" disabled>Start forfra</button></div>
+      </section>
+      <div class="play-toolbar">
+        <div class="view-modes" role="group" aria-label="Vælg 3D-visning">
+          <button id="viewPlay" type="button" aria-pressed="false">Spilvisning</button>
+          <button id="viewRoom" type="button" aria-pressed="true">Rumvisning</button>
+        </div>
+        <div class="quick-play"><span id="mobileStatus" role="status">Gør spillet klar…</span><button id="mobileUndo" class="text-button" type="button" disabled>Fortryd</button></div>
+      </div>
       <div class="stage" id="stage">
         <canvas id="boardCanvas" tabindex="0" role="application" aria-label="3D-skakbræt" aria-describedby="board-help keyboard-help"></canvas>
         <div class="loading" id="loading" role="status"><span class="loading-mark" aria-hidden="true">♔</span><p id="loadingText">Sætter brikkerne på plads…</p><button id="reloadScene" class="button secondary" hidden>Prøv igen</button></div>
         <div class="scene-caption" aria-hidden="true"><span id="viewSide">HVIDS SIDE</span><span>VALNØD & MESSING</span></div>
       </div>
       <div class="board-toolbar">
-        <p id="board-help"><span class="mouse-mark" aria-hidden="true">↔</span> Træk for at dreje og vippe <span class="separator">·</span> Rul for at zoome <span class="separator">·</span> Klik for at vælge og flytte</p>
+        <p id="board-help"><span class="mouse-mark" aria-hidden="true">↔</span> Træk for at dreje og vippe <span class="separator">·</span> Rul eller knib for at zoome <span class="separator">·</span> Tryk for at vælge og flytte</p>
         <div class="view-controls">
           <button class="text-button fullscreen-button" id="fullscreenToggle" type="button" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" /></svg><span id="fullscreenLabel">Fuldskærm</span></button>
           <button class="text-button" id="resetView"><span aria-hidden="true">↺</span> Nulstil visning</button>
@@ -40,16 +51,21 @@
         <label for="humanColor">Du spiller som</label>
         <select id="humanColor"><option value="w">Hvid</option><option value="b">Sort</option></select>
         <label for="skillLevel">Motorstyrke</label>
-        <select id="skillLevel"><option value="18">18 · Maksimum</option><option value="15">15 · Meget stærk</option><option value="12">12 · Træning</option><option value="9">9 · Lettere</option></select>
+        <select id="skillLevel" aria-describedby="skillHelp"><option value="3">Kort søgning</option><option value="6">Længere søgning</option><option value="9">Grundig søgning</option><option value="12">Dyb søgning</option><option value="15">Meget dyb søgning</option><option value="18">Maksimum</option></select>
+        <p class="settings-help" id="skillHelp">Start med kort søgning, og skru op efter lyst. Stockfish kan stadig spille stærkt på laveste indstilling.</p>
       </div>
       <div class="controls"><button class="button primary" id="newGame">Nyt spil <span aria-hidden="true">→</span></button><button class="button secondary" id="undo" disabled>Fortryd mit træk</button></div>
+      <p class="save-message" id="saveMessage" role="status">Partiet gemmes automatisk på denne enhed.</p>
+      <button class="button secondary claim-draw" id="claimDraw" type="button" hidden>Kræv remis</button>
       <div class="history-heading"><h3>Trækhistorik</h3><span id="moveCount">0 træk</span></div>
       <div class="moves" id="moves" aria-live="polite"><p class="empty-history">Ingen træk endnu. Hvid lægger ud.</p></div>
-      <div class="engine-card"><div class="engine-heading"><span>Stockfish 18</span><span id="engineBadge">DYBDE 18</span></div><p id="engineState">Klar til at spille</p><p id="engineEval">Vurderingen vises efter computerens træk.</p><button class="text-button" id="retryEngine" hidden>Prøv forbindelsen igen</button></div>
-      <details class="about-engine"><summary>Om skakmotoren og dine data</summary><p>Spillet kræver internet. Når computeren skal trække, sendes skakstillingen og analyseindstillingerne til <a href="https://chess-api.com/" target="_blank" rel="noopener noreferrer">Chess-API.com</a>, som beregner trækket med Stockfish. Motorstyrken angiver den ønskede søgedybde.</p><p><a href="https://stockfishchess.org/" target="_blank" rel="noopener noreferrer">Stockfish</a> er GPLv3-licenseret. <a href="./credits.html" target="_blank" rel="noopener noreferrer">3D-modeller og materialer</a>.</p></details>
+      <div class="engine-card"><div class="engine-heading"><span>Stockfish 18</span><span id="engineBadge">DYBDE 3</span></div><p id="engineState">Klar til at spille</p><p id="engineEval">Vurderingen vises efter computerens træk.</p><button class="text-button" id="retryEngine" hidden>Prøv forbindelsen igen</button></div>
+      <details class="about-engine"><summary>Om skakmotoren og dine data</summary><p>Spillet kræver internet. Når computeren skal trække, sendes skakstillingen og analyseindstillingerne til <a href="https://chess-api.com/" target="_blank" rel="noopener noreferrer">Chess-API.com</a>, som beregner trækket med Stockfish. Valgene ændrer søgedybden fra 3 til 18; de angiver ikke et bestemt spillerniveau eller Elo-tal.</p><p>Partiet og dine valg gemmes i denne browser på denne enhed. De følger ikke automatisk med til andre enheder. Computeren kræver remis, når reglerne giver mulighed for det.</p><p><a href="https://stockfishchess.org/" target="_blank" rel="noopener noreferrer">Stockfish</a> er GPLv3-licenseret. <a href="./credits.html" target="_blank" rel="noopener noreferrer">3D-modeller og materialer</a>.</p></details>
     </aside>
   </main>
   <footer class="site-footer"><span>ET SKAKSPIL AF EMILIAN</span><span>Gode træk må gerne tage tid.</span></footer>
+  <dialog id="resetModal" aria-labelledby="resetTitle" aria-describedby="resetDescription"><h2 id="resetTitle">Begynde på et nyt parti?</h2><p id="resetDescription">Det nuværende parti bliver erstattet, også i den gemte version på denne enhed.</p><form method="dialog" class="dialog-actions"><button class="button secondary" value="cancel" autofocus>Behold partiet</button><button class="button primary" value="confirm">Start nyt parti</button></form></dialog>
+  <dialog id="drawModal" aria-labelledby="drawTitle" aria-describedby="drawDescription"><h2 id="drawTitle">Kræv remis med dit næste træk</h2><p id="drawDescription">Vælg det træk, du vil kræve remis på grundlag af. Partiet afsluttes, uden at trækket bliver spillet.</p><label for="drawMove">Dit påtænkte træk</label><select id="drawMove"></select><form method="dialog" class="dialog-actions"><button class="button secondary" value="cancel" autofocus>Spil videre</button><button class="button primary" id="confirmDraw" value="confirm">Kræv remis</button></form></dialog>
   <dialog id="promotionModal" aria-labelledby="promotionTitle"><form method="dialog"><button class="dialog-close" aria-label="Annuller bondeforvandling">×</button></form><p class="eyebrow">SIDSTE RÆKKE</p><h2 id="promotionTitle">Lille bonde. Nye ambitioner.</h2><p>Vælg, hvilken brik bonden skal forvandles til.</p><div class="promotion-grid"><button data-promote="q">♕<span>Dronning</span></button><button data-promote="r">♖<span>Tårn</span></button><button data-promote="b">♗<span>Løber</span></button><button data-promote="n">♘<span>Springer</span></button></div></dialog>
   <script type="module" src="./fullscreen.js"></script>
   <script type="module" src="./main.js"></script>
