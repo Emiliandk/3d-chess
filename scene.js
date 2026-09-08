@@ -97,8 +97,8 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
     // Align the fireplace/globe/chair side of the room with the initial board view.
     world.background=panorama;world.backgroundBlurriness=.045;world.backgroundIntensity=.82;world.backgroundRotation.y=1.5;
     const pmrem=new THREE.PMREMGenerator(renderer);world.environment=pmrem.fromEquirectangular(panorama).texture;world.environmentIntensity=.5;world.environmentRotation.copy(world.backgroundRotation);pmrem.dispose();
-    fireplace=createFireplace({atlas:fireAtlas,rotation:world.backgroundRotation.y,intensity:world.backgroundIntensity});
-    world.add(fireplace.mesh);
+    fireplace=createFireplace({atlas:fireAtlas,environment:world.environment,rotation:world.backgroundRotation.y,intensity:world.backgroundIntensity,blur:world.backgroundBlurriness});
+    world.add(fireplace.mesh,fireplace.reflection);
     const walnut=new THREE.MeshPhysicalMaterial({color:0x9e7655,map:wood,roughnessMap:rough,roughness:.55,normalMap:normal,normalScale:new THREE.Vector2(.13,.13),clearcoat:.5,clearcoatRoughness:.27});
     const darkTile=walnut.clone();darkTile.color.set(0x9f7851);darkTile.roughness=.4;
     const lightTile=new THREE.MeshPhysicalMaterial({color:0xf0d5a3,roughness:.42,normalMap:normal,normalScale:new THREE.Vector2(.035,.035),clearcoat:.35,clearcoatRoughness:.3});

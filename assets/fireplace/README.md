@@ -25,3 +25,17 @@ recess and feathers the result inside the existing firebox. The marble,
 mantel and the original library panorama file are untouched. Reduced motion
 holds the new sequence at frame zero. If the atlas cannot load, the original
 panorama fire remains visible and chess play can continue.
+
+The floor reflection reuses this atlas and the firebox's time uniform. Its
+feather support is limited to panorama pixels x536–736, y602–748, below the
+marble hearth. A vertically flipped, softened sample modulates the existing
+golden reflection and adds warm light through the original wood grain. The
+floor samples the same prefiltered room texture, blur and exposure as the
+background; neither the panorama nor the atlas is rewritten. This is a local
+animated reflection in the panoramic room, not a ray-traced mirror.
+
+Both patches follow the background's camera translation/rotation and are
+occluded by the 3D table and pieces. They advance together at at most 24 fps
+when either patch is on-screen, freeze together for reduced motion and stop
+requesting frames when both are off-screen. The environment texture is shared
+and is never disposed by the fireplace controller.
