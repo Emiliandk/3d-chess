@@ -184,7 +184,7 @@ export function createCognacProps({bottleTexture}) {
 
   // Slender, almost straight lower body; rounded shoulders taper into the long
   // clear neck seen in the reference. The bottom has a recessed central punt.
-  shells.push(mesh(bottle, 'hollow-bottle-glass', lathe([
+  const bottleShell = mesh(bottle, 'hollow-bottle-glass', lathe([
     [0, .145], [.20, .105], [.35, .035], [.43, 0], [.537, 0],
     [.573, .035], [.588, .09], [.592, .17], [.59, .42],
     [.59, 2.67], [.585, 2.83], [.565, 2.998], [.519, 3.17],
@@ -195,7 +195,20 @@ export function createCognacProps({bottleTexture}) {
     [.498, 3.17], [.544, 2.998], [.564, 2.83], [.569, 2.67],
     [.569, .42], [.567, .19], [.546, .12], [.442, .079],
     [.362, .103], [.218, .209], [0, .246]
-  ]), bottleGlass, {order: 2}));
+  ]), bottleGlass, {order: 2});
+  shells.push(bottleShell);
+
+  // The refraction capture hides glass shells when the cached shadow map is
+  // updated. Keep a matching, shadow-only silhouette present in both passes so
+  // the label, seal and capsule do not cast disconnected fragments. This is an
+  // opaque shadow approximation for the dark filled bottle, not glass caustics.
+  const bottleShadowMaterial = new THREE.MeshBasicMaterial({
+    colorWrite: false, depthWrite: false
+  });
+  materials.add(bottleShadowMaterial);
+  const bottleShadow = mesh(bottle, 'bottle-shadow-proxy', bottleShell.geometry,
+    bottleShadowMaterial, {shadow: true});
+  bottleShadow.receiveShadow = false;
 
   mesh(bottle, 'bottled-cognac', lathe([
     [0, .247], [.218, .21], [.362, .104], [.442, .08],

@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {Box3,Mesh,PerspectiveCamera,Raycaster,Texture,Vector3} from '../vendor/three.module.js';
+import {BackSide,Box3,DoubleSide,FrontSide,Mesh,MeshBasicMaterial,PerspectiveCamera,Raycaster,Scene,Texture,Vector3} from '../vendor/three.module.js';
 import {createCognacProps} from '../cognac-props.js';
+import {createCognacRenderPass} from '../cognac-render-pass.js';
 import {fitBoardCamera} from '../camera.js';
 
 test('two glasses and one bottle stand on the table, clear of the chessboard',()=>{
@@ -84,4 +85,118 @@ test('the complete board and table props fit phone, tablet and desktop camera vi
     }
   }
   props.dispose();
+});
+
+// Project three narrow strips along the bottle's axis onto the tabletop using
+// the real key-light direction. Trace back toward that light through eligible
+// shadow geometry. This detects the disconnected label/capsule shadow without
+// relying on a screenshot or pretending to simulate WebGL filtering/refraction.
+function bottleShadowGaps(bottle) {
+  bottle.updateWorldMatrix(true,true);
+  const shadowSurfaces=[];
+  bottle.traverseVisible(object=>{
+    if(!object.isMesh||!object.castShadow||!object.material.visible)return;
+    // Match r180 PCF shadow-face selection, using normal raycasting instead of
+    // the decorative meshes' deliberate no-op input handlers.
+    const source=object.material;
+    const side=source.shadowSide??(source.side===DoubleSide?DoubleSide:source.side===BackSide?FrontSide:BackSide);
+    const surface=new Mesh(object.geometry,new MeshBasicMaterial({side}));
+    surface.matrixAutoUpdate=false;
+    surface.matrix.copy(object.matrixWorld);
+    surface.updateMatrixWorld(true);
+    shadowSurfaces.push(surface);
+  });
+  try {
+    const towardLight=new Vector3(-6,12,7).normalize();
+    const acrossShadow=new Vector3(7,0,6).normalize();
+    const base=bottle.getWorldPosition(new Vector3());
+    const gaps=[];
+    for(const lateral of [-.1,0,.1])for(let sample=1;sample<=49;sample++){
+      const height=sample/10;
+      const ground=base.clone().add(new Vector3(height/2,.001,-height*7/12))
+        .addScaledVector(acrossShadow,lateral);
+      if(!new Raycaster(ground,towardLight).intersectObjects(shadowSurfaces).length)gaps.push({height,lateral});
+    }
+    return gaps;
+  } finally {
+    for(const surface of shadowSurfaces)surface.material.dispose();
+  }
+}
+
+test('bottle shadow stays connected from its base through the cap, including while glass is hidden',()=>{
+  const props=createCognacProps({bottleTexture:new Texture()});
+  const bottle=props.group.getObjectByName('gourry-de-chadeville-cognac-bottle');
+  const proxy=bottle.getObjectByName('bottle-shadow-proxy');
+  try {
+    assert.deepEqual(bottleShadowGaps(bottle),[],'the projected bottle silhouette must have no detached parts');
+    for(const shell of props.shells)shell.visible=false;
+    assert.deepEqual(bottleShadowGaps(bottle),[],'the liquid capture must retain the complete shadow');
+    // Recreate the original defect in this isolated scene: cap/label casters
+    // remain, but the body is absent. The probe must detect that actual gap.
+    proxy.castShadow=false;
+    assert.ok(bottleShadowGaps(bottle).some(gap=>gap.height===2.5&&gap.lateral===0),
+      'removing body occlusion must reveal the original middle-of-shadow gap');
+    proxy.castShadow=true;
+    assert.deepEqual(bottleShadowGaps(bottle),[],'restoring the body must close the gap again');
+  } finally {props.dispose();}
+});
+
+test('refraction capture builds a complete bottle shadow before consuming the pending update',()=>{
+  const props=createCognacProps({bottleTexture:new Texture()});
+  const bottle=props.group.getObjectByName('gourry-de-chadeville-cognac-bottle');
+  const proxy=bottle.getObjectByName('bottle-shadow-proxy');
+  const scene=new Scene();scene.add(props.group);
+  const camera=new PerspectiveCamera();
+  const captures=[],shadowUpdates=[];
+  const renderer={
+    extensions:{has:()=>true},target:null,
+    shadowMap:{autoUpdate:false,needsUpdate:true},
+    getDrawingBufferSize(out){return out.set(900,600);},
+    getRenderTarget(){return this.target;},
+    getActiveCubeFace(){return 0;},getActiveMipmapLevel(){return 0;},
+    setRenderTarget(target){this.target=target;},clear(){},
+    render(){
+      if(this.target)captures.push(props.shells.map(shell=>shell.visible));
+      // The real renderer consumes the pending update in the first render.
+      // Its final canvas pass consequently reuses the capture's shadow map.
+      if(this.shadowMap.needsUpdate){
+        shadowUpdates.push({duringCapture:!!this.target,gaps:bottleShadowGaps(bottle)});
+        this.shadowMap.needsUpdate=false;
+      }
+    }
+  };
+  const pass=createCognacRenderPass(renderer,{shells:props.shells});
+  try {
+    assert.equal(proxy.material.colorWrite,false,'shadow support must not replace the refracted bottle pixels');
+    assert.equal(proxy.material.depthWrite,false,'shadow support must not occlude liquid in either color pass');
+    pass.render(scene,camera);
+    assert.deepEqual(shadowUpdates,[{duringCapture:true,gaps:[]}]);
+    pass.render(scene,camera);
+    assert.equal(shadowUpdates.length,1,'ordinary redraws must reuse the complete shadow');
+    bottle.position.x+=.2;
+    renderer.shadowMap.needsUpdate=true;
+    pass.render(scene,camera);
+    assert.deepEqual(shadowUpdates,[{duringCapture:true,gaps:[]},{duringCapture:true,gaps:[]}],
+      'an invalidated shadow must remain complete when regenerated');
+    assert.ok(captures.every(visibility=>visibility.every(value=>value===false)));
+    assert.ok(props.shells.every(shell=>shell.visible),'capture must restore every glass shell');
+  } finally {pass.dispose();props.dispose();}
+});
+
+test('shadow support preserves bottle geometry and releases shared resources exactly once',()=>{
+  const inputTexture=new Texture();
+  const props=createCognacProps({bottleTexture:inputTexture});
+  const bottle=props.group.getObjectByName('gourry-de-chadeville-cognac-bottle');
+  const shell=bottle.getObjectByName('hollow-bottle-glass');
+  const proxy=bottle.getObjectByName('bottle-shadow-proxy');
+  assert.equal(proxy.geometry,shell.geometry,'shadow contours must stay tied to the editable bottle geometry');
+  assert.equal(proxy.parent,shell.parent,'shadow support must inherit bottle transforms');
+  assert.equal(props.shells.includes(proxy),false,'shadow support must survive shell hiding');
+  const disposals={geometry:0,material:0,inputTexture:0};
+  shell.geometry.addEventListener('dispose',()=>disposals.geometry++);
+  proxy.material.addEventListener('dispose',()=>disposals.material++);
+  inputTexture.addEventListener('dispose',()=>disposals.inputTexture++);
+  props.dispose();props.dispose();
+  assert.deepEqual(disposals,{geometry:1,material:1,inputTexture:0},
+    'shared geometry and the shadow material are owned once; the supplied texture remains caller-owned');
 });
