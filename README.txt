@@ -1,4 +1,4 @@
-3D SKAK · EMILIAN
+3D CHESS · EMILIAN
 ================
 
 En opdatering af det eksisterende chess.emilian.dk med et rigtigt 3D-bræt,
@@ -41,7 +41,7 @@ Stockfish leveres via https://chess-api.com/v1 som i den eksisterende app.
 Internet er nødvendigt, når computeren skal trække. Kun den aktuelle FEN-stilling
 og analyseindstillinger sendes. Der følger ingen lokal Stockfish-motor med.
 Fejl fra API'et vises med mulighed for at prøve samme stilling igen.
-Fortryd, nyt spil og ændret motorstyrke annullerer igangværende analyser, og
+Fortryd, nyt spil og ændret søgedybde annullerer igangværende analyser, og
 forældede svar får ikke lov at ændre en nyere stilling.
 Nye partier starter ved søgedybde 3. De seks valg går op til dybde 18 og er
 søgeindstillinger, ikke Elo-niveauer. Stockfish kan stadig spille stærkt på

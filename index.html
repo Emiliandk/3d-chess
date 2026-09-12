@@ -4,21 +4,21 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17130f">
-  <meta name="description" content="Tag plads til et parti 3D-skak mod Stockfish. Drej brættet, vælg motorstyrke, og spil i dit eget tempo i varme biblioteksomgivelser.">
-  <title>3D Skak · Emilian</title>
+  <meta name="description" content="Prøv 3D Chess mod Stockfish. Drej brættet, vælg computerens søgning, og spil i dit eget tempo i varme biblioteksomgivelser.">
+  <title>3D Chess · Emilian</title>
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="https://emilian.dk/" aria-label="Til Emilians portfolio"><span class="brand-initial">E.</span><span>EMILIAN<span class="brand-sub">3D SKAK</span></span></a>
-    <p class="header-note">Find din vinkel. Tag dit næste træk.</p>
+    <a class="brand" href="https://emilian.dk/" aria-label="Til Emilians portfolio"><span class="brand-initial">E.</span><span>EMILIAN<span class="brand-sub">3D CHESS</span></span></a>
+    <p class="header-note">Find din vinkel. Gør dit træk.</p>
     <a class="portfolio-link" href="https://emilian.dk/">Til portfolio <span aria-hidden="true">↗</span></a>
   </header>
   <main class="app">
     <section class="game-area" aria-labelledby="board-title">
       <div class="board-heading"><div><p class="eyebrow">VED BRÆTTET</p><h1 id="board-title">Tag plads. Giv modspil.</h1></div><span class="view-label">3D · FRI SYNSVINKEL</span></div>
       <section class="resume-game" id="resumeGame" aria-labelledby="resumeTitle" hidden>
-        <div><h2 id="resumeTitle">Dit sidste parti venter.</h2><p>Fortsæt fra den gemte stilling på denne enhed.</p></div>
+        <div><h2 id="resumeTitle">Dit sidste parti venter.</h2><p>Fortsæt fra den stilling, der er gemt i denne browser.</p></div>
         <div class="resume-actions"><button class="button primary" id="resumeButton" type="button" disabled>Fortsæt dit parti</button><button class="button secondary" id="freshButton" type="button" disabled>Start forfra</button></div>
       </section>
       <div class="play-toolbar">
@@ -34,7 +34,7 @@
         <div class="scene-caption" aria-hidden="true"><span id="viewSide">HVIDS SIDE</span><span>VALNØD & MESSING</span></div>
       </div>
       <div class="board-toolbar">
-        <p id="board-help"><span class="mouse-mark" aria-hidden="true">↔</span> Træk for at dreje og vippe <span class="separator">·</span> Rul eller knib for at zoome <span class="separator">·</span> Tryk for at vælge og flytte</p>
+        <p id="board-help"><span class="mouse-mark" aria-hidden="true">↔</span> Træk for at dreje og vippe <span class="separator">·</span> Rul eller knib for at zoome <span class="separator">·</span> Tryk på en brik. Tryk derefter på dens nye felt.</p>
         <div class="view-controls">
           <button class="text-button fullscreen-button" id="fullscreenToggle" type="button" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" /></svg><span id="fullscreenLabel">Fuldskærm</span></button>
           <button class="text-button" id="resetView"><span aria-hidden="true">↺</span> Nulstil visning</button>
@@ -50,12 +50,12 @@
       <div class="settings">
         <label for="humanColor">Du spiller som</label>
         <select id="humanColor"><option value="w">Hvid</option><option value="b">Sort</option></select>
-        <label for="skillLevel">Motorstyrke</label>
+        <label for="skillLevel">Computerens søgning</label>
         <select id="skillLevel" aria-describedby="skillHelp"><option value="3">Kort søgning</option><option value="6">Længere søgning</option><option value="9">Grundig søgning</option><option value="12">Dyb søgning</option><option value="15">Meget dyb søgning</option><option value="18">Maksimum</option></select>
         <p class="settings-help" id="skillHelp">Start med kort søgning, og skru op efter lyst. Stockfish kan stadig spille stærkt på laveste indstilling.</p>
       </div>
       <div class="controls"><button class="button primary" id="newGame">Nyt spil <span aria-hidden="true">→</span></button><button class="button secondary" id="undo" disabled>Fortryd mit træk</button></div>
-      <p class="save-message" id="saveMessage" role="status">Partiet gemmes automatisk på denne enhed.</p>
+      <p class="save-message" id="saveMessage" role="status">Dit parti gemmes automatisk i denne browser.</p>
       <button class="button secondary claim-draw" id="claimDraw" type="button" hidden>Kræv remis</button>
       <div class="history-heading"><h3>Trækhistorik</h3><span id="moveCount">0 træk</span></div>
       <div class="moves" id="moves" aria-live="polite"><p class="empty-history">Ingen træk endnu. Hvid lægger ud.</p></div>
@@ -64,7 +64,7 @@
     </aside>
   </main>
   <footer class="site-footer"><span>ET SKAKSPIL AF EMILIAN</span><span>Gode træk må gerne tage tid.</span></footer>
-  <dialog id="resetModal" aria-labelledby="resetTitle" aria-describedby="resetDescription"><h2 id="resetTitle">Begynde på et nyt parti?</h2><p id="resetDescription">Det nuværende parti bliver erstattet, også i den gemte version på denne enhed.</p><form method="dialog" class="dialog-actions"><button class="button secondary" value="cancel" autofocus>Behold partiet</button><button class="button primary" value="confirm">Start nyt parti</button></form></dialog>
+  <dialog id="resetModal" aria-labelledby="resetTitle" aria-describedby="resetDescription"><h2 id="resetTitle">Begynde på et nyt parti?</h2><p id="resetDescription">Det nuværende parti bliver erstattet, også i den version, der er gemt i denne browser.</p><form method="dialog" class="dialog-actions"><button class="button secondary" value="cancel" autofocus>Behold partiet</button><button class="button primary" value="confirm">Start nyt parti</button></form></dialog>
   <dialog id="drawModal" aria-labelledby="drawTitle" aria-describedby="drawDescription"><h2 id="drawTitle">Kræv remis med dit næste træk</h2><p id="drawDescription">Vælg det træk, du vil kræve remis på grundlag af. Partiet afsluttes, uden at trækket bliver spillet.</p><label for="drawMove">Dit påtænkte træk</label><select id="drawMove"></select><form method="dialog" class="dialog-actions"><button class="button secondary" value="cancel" autofocus>Spil videre</button><button class="button primary" id="confirmDraw" value="confirm">Kræv remis</button></form></dialog>
   <dialog id="promotionModal" aria-labelledby="promotionTitle"><form method="dialog"><button class="dialog-close" aria-label="Annuller bondeforvandling">×</button></form><p class="eyebrow">SIDSTE RÆKKE</p><h2 id="promotionTitle">Lille bonde. Nye ambitioner.</h2><p>Vælg, hvilken brik bonden skal forvandles til.</p><div class="promotion-grid"><button data-promote="q">♕<span>Dronning</span></button><button data-promote="r">♖<span>Tårn</span></button><button data-promote="b">♗<span>Løber</span></button><button data-promote="n">♘<span>Springer</span></button></div></dialog>
   <script type="module" src="./fullscreen.js"></script>

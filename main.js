@@ -17,7 +17,7 @@ let previousFocus=null,resetFocus=null,resetOptions=null;
 function persist(){
   if(!saveEnabled||awaitingResume)return;
   $('saveMessage').textContent=storage.save(game.exportGame(),viewMode)
-    ?'Partiet gemmes automatisk på denne enhed.'
+    ?'Dit parti gemmes automatisk i denne browser.'
     :'Denne browser kunne ikke gemme partiet. Du kan stadig spille, så længe siden er åben.';
 }
 function showViewMode(mode){viewMode=mode;$('viewPlay').setAttribute('aria-pressed',String(mode==='play'));$('viewRoom').setAttribute('aria-pressed',String(mode==='room'));persist();}
