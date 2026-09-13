@@ -33,6 +33,8 @@ index.html kan ikke længere stå alene eller åbnes direkte med file://.
 Til lokal udvikling: Node.js 22+ og kommandoen npm run dev.
 Ingen npm-installation er nødvendig; 3D-bibliotekerne følger med i vendor/.
 Åbn derefter http://localhost:4173 i din egen browser.
+Udviklingsserveren lytter kun på 127.0.0.1 og kan kun nås fra denne computer.
+Det samme gælder npm start, som bruger Python 3 på port 4173.
 Vercel-konfigurationen serverer projektmappen som statiske filer.
 
 MOTOR
