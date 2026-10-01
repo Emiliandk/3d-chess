@@ -1,6 +1,7 @@
 import {createGame} from './game.js';
 import {createChessScene} from './scene.js';
 import {createGameStorage} from './game-storage.js';
+import {createBackupText,parseBackupText,MAX_BACKUP_BYTES} from './game-backup.js';
 
 const $=id=>document.getElementById(id);
 const storage=createGameStorage();
@@ -11,6 +12,8 @@ let saveEnabled=false;
 let sceneView=null,sceneReady=false,lastColor='w';
 let viewMode=['play','room'].includes(saved?.viewMode)?saved.viewMode:window.matchMedia('(max-width: 900px)').matches?'play':'room';
 const promotion=$('promotionModal'),resetModal=$('resetModal'),drawModal=$('drawModal');
+const importModal=$('importModal');
+let pendingImport=null,importReading=false,importFocus=null;
 const drawLabels={'threefold':'tredje gentagelse','fifty-move':'50-træksreglen','fivefold':'femte gentagelse','seventy-five-move':'75-træksreglen','insufficient-material':'utilstrækkeligt materiale'};
 let previousFocus=null,resetFocus=null,resetOptions=null;
 
@@ -26,6 +29,8 @@ function syncControls(s){
   for(const id of ['newGame','humanColor','skillLevel','retryEngine','claimDraw'])$(id).disabled=!playable;
   for(const id of ['resetView','viewPlay','viewRoom','resumeButton','freshButton'])$(id).disabled=!sceneReady;
   $('undo').disabled=$('mobileUndo').disabled=!playable||!s.canUndo;
+  $('exportGame').disabled=$('exportBeforeImport').disabled=!(sceneReady||savedGame);
+  $('importGame').disabled=!sceneReady||importReading||Boolean(pendingImport);
 }
 function formatEval(engine){if(!engine.eval)return engine.thinking?'Motoren vurderer stillingen…':'Vurderingen vises efter computerens træk.';const value=Number(engine.eval.value);const depth=engine.depth?` · dybde ${engine.depth}`:'';if(engine.eval.type==='mate')return `${value>=0?'Hvid':'Sort'} har mat i ${Math.abs(value)}${depth}`;return `Vurdering (hvid): ${value>0?'+':''}${value.toFixed(2)}${depth}`;}
 function statusFor(s){if(s.result==='checkmate')return `Skakmat · ${s.turn==='w'?'sort':'hvid'} vinder`;if(s.result==='stalemate')return 'Remis · pat';if(s.result==='draw')return `Remis · ${drawLabels[s.drawReason]||'partiet er afsluttet'}`;if(s.pendingPromotion)return 'Vælg bondens nye brik';if(s.turn===s.engineColor){if(s.engine.failed)return 'Motoren kunne ikke svare';return `Stockfish tænker${s.inCheck?' · skak':''}…`;}return `Din tur · ${s.humanColor==='w'?'hvid':'sort'}${s.inCheck?' · skak':''}`;}
@@ -88,6 +93,48 @@ $('skillLevel').addEventListener('change',e=>game.setDepth(e.target.value));
 $('resetView').addEventListener('click',()=>sceneView?.resetView(game.getState().humanColor));
 $('retryEngine').addEventListener('click',()=>game.retryEngine());
 $('reloadScene').addEventListener('click',()=>location.reload());
+function downloadBackup(){
+  try{
+    const record=awaitingResume?{game:savedGame,viewMode:saved.viewMode}: {game:game.exportGame(),viewMode};
+    const now=new Date();
+    const text=createBackupText(record.game,record.viewMode,now);
+    const blob=new window.Blob([text],{type:'application/json'});
+    const url=window.URL.createObjectURL(blob);
+    const link=document.createElement('a');
+    link.href=url;link.download=`chess-parti-${now.toISOString().replace(/[:.]/g,'-')}.json`;
+    document.body.append(link);link.click();link.remove();
+    window.setTimeout(()=>window.URL.revokeObjectURL(url),1000);
+    $('backupMessage').textContent='Backupfilen er klar til at blive gemt. Behold den et sikkert sted.';
+  }catch(error){$('backupMessage').textContent=error.message||'Backupfilen kunne ikke oprettes. Prøv igen.';}
+}
+$('exportGame').addEventListener('click',downloadBackup);
+$('exportBeforeImport').addEventListener('click',downloadBackup);
+$('importGame').addEventListener('click',()=>{$('backupFile').click();});
+$('backupFile').addEventListener('change',async()=>{
+  const file=$('backupFile').files?.[0];$('backupFile').value='';
+  if(!file||importReading||pendingImport)return;
+  importFocus=document.activeElement;importReading=true;syncControls(game.getState());
+  try{
+    if(file.size>MAX_BACKUP_BYTES)throw new Error('Backupfilen er for stor. Vælg en Chess-backup på højst 100 KB.');
+    const record=parseBackupText(await file.text());
+    pendingImport=record;
+    $('importDescription').textContent=`Filen indeholder ${record.game.moves.length} træk, og du spiller som ${record.game.humanColor==='w'?'hvid':'sort'}. Gendannelse erstatter dit nuværende og lokalt gemte parti.`;
+    importModal.returnValue='';importModal.showModal();
+    $('backupMessage').textContent='Backupfilen er kontrolleret. Bekræft gendannelsen, eller behold dit parti.';
+  }catch(error){pendingImport=null;$('backupMessage').textContent=error.message||'Backupfilen kunne ikke læses. Dit parti er bevaret.';}
+  finally{importReading=false;syncControls(game.getState());}
+});
+importModal.addEventListener('close',async()=>{
+  const record=pendingImport;pendingImport=null;syncControls(game.getState());importFocus?.focus();
+  if(importModal.returnValue!=='confirm'||!record){$('backupMessage').textContent='Gendannelsen er annulleret. Dit parti er bevaret.';return;}
+  // Suppress autosave until the complete validated position and view are ready.
+  const wasSaveEnabled=saveEnabled;saveEnabled=false;
+  if(!game.restoreGame(record.game)){saveEnabled=wasSaveEnabled;$('backupMessage').textContent='Partiet kunne ikke gendannes. Dit nuværende parti er bevaret.';return;}
+  sceneView?.setViewMode(record.viewMode);
+  finishResumeChoice();
+  $('backupMessage').textContent='Partiet er gendannet. Behold backupfilen som en ekstra kopi.';
+  await game.start();
+});
 promotion.querySelectorAll('[data-promote]').forEach(button=>button.addEventListener('click',()=>game.promote(button.dataset.promote)));
 promotion.addEventListener('cancel',e=>{e.preventDefault();game.cancelPromotion();});
 promotion.addEventListener('close',()=>{if(game.getState().pendingPromotion)game.cancelPromotion();previousFocus?.focus();});

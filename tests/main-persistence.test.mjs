@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createGame} from '../game.js';
 import {createGameStorage} from '../game-storage.js';
+import {createBackupText,parseBackupText,MAX_BACKUP_BYTES} from '../game-backup.js';
 
 // This is a Node integration test of the real entrypoint and game/storage code,
-// not a WebGL or browser-E2E test. Only the three imports are replaced by
+// not a WebGL or browser-E2E test. Only the imports are replaced by
 // constructor arguments; the entrypoint's handlers and startup run unchanged.
 // The renderer, minimal DOM/dialog contract and HTTP responses are test doubles.
 const source = await readFile(new URL('../main.js', import.meta.url), 'utf8');
@@ -13,7 +14,8 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const imports = [
   "import {createGame} from './game.js';",
   "import {createChessScene} from './scene.js';",
-  "import {createGameStorage} from './game-storage.js';"
+  "import {createGameStorage} from './game-storage.js';",
+  "import {createBackupText,parseBackupText,MAX_BACKUP_BYTES} from './game-backup.js';"
 ];
 let entrypoint = source;
 for (const statement of imports) {
@@ -22,6 +24,7 @@ for (const statement of imports) {
 }
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 const runMain = new AsyncFunction('createGame', 'createChessScene', 'createGameStorage',
+  'createBackupText', 'parseBackupText', 'MAX_BACKUP_BYTES',
   'document', 'window', 'location', `${entrypoint}\nreturn {dispose: () => game.dispose()};`);
 const originalWindow = globalThis.window;
 const originalFetch = globalThis.fetch;
@@ -86,12 +89,14 @@ function fakeDocument() {
     async click() {
       assert.equal(this.disabled, false, 'A user cannot click a disabled control');
       this.focus();
+      if (this.tagName === 'A') document.downloads.push({href: this.href, name: this.download});
       await this.emit('click');
     }
     focus() { document.activeElement = this; }
     setAttribute(key, value) { this.attributes.set(key, String(value)); }
     getAttribute(key) { return this.attributes.get(key) ?? null; }
     append(...children) { this.children.push(...children); }
+    remove() {}
     replaceChildren(...children) { this.children = [...children]; }
     get options() { return this.children; }
     showModal() { assert.equal(this.open, false); this.open = true; }
@@ -118,6 +123,8 @@ function fakeDocument() {
     return elements.get(id);
   };
   document.createElement = tag => new Element(tag);
+  document.body = new Element('body');
+  document.downloads = [];
   document.getElementById('promotionModal').promotions = [...html.matchAll(/data-promote="([qrbn])"/g)]
     .map(([, type]) => { const button = new Element('button'); button.dataset.promote = type; return button; });
   // The dialog form owns these return values in the browser. Check that the
@@ -131,7 +138,10 @@ function fakeDocument() {
 
 async function mount(storage = memory(), replies = []) {
   const document = fakeDocument();
-  const window = {localStorage: storage, matchMedia: () => ({matches: false})};
+  const blobs = new Map();
+  const window = {localStorage: storage, matchMedia: () => ({matches: false}), Blob,
+    URL: {createObjectURL: blob => { const url = `blob:test-${blobs.size}`; blobs.set(url, blob); return url; }, revokeObjectURL() {}},
+    setTimeout: callback => callback()};
   globalThis.window = window;
   const requests = [];
   globalThis.fetch = async (url, options) => {
@@ -152,9 +162,14 @@ async function mount(storage = memory(), replies = []) {
       setViewMode: mode => { scene.viewMode = mode; options.onViewModeChange(mode); }
     };
   };
-  const entry = await runMain(createGame, renderer, createGameStorage, document, window,
+  const entry = await runMain(createGame, renderer, createGameStorage, createBackupText, parseBackupText, MAX_BACKUP_BYTES, document, window,
     {reload: () => assert.fail('No reload is expected in persistence flows')});
   const app = {storage, requests, scene, dispose: entry.dispose,
+    async download() { const item = document.downloads.at(-1); return {name: item.name, text: await blobs.get(item.href).text()}; },
+    async import(text, size = new TextEncoder().encode(text).length) {
+      document.getElementById('backupFile').files = [{size, text: async () => text}];
+      await document.getElementById('backupFile').emit('change');
+    },
     element: id => document.getElementById(id),
     click: id => document.getElementById(id).click(),
     async change(id, value) {
@@ -290,4 +305,93 @@ test('an empty saved black game restores its colour and camera before the comput
   assert.ok(storage.writes.every(({value}) => JSON.parse(value).game.humanColor === 'b'),
     'Startup must never persist a temporary white game');
   assert.deepEqual(storage.saved().game.moves, ['e2e4']);
+});
+
+test('backup exports an unresumed save without replacing it or requesting an engine move', async () => {
+  const storage = memory(record(['d2d4', 'd7d5'], {targetDepth: 12}));
+  const app = await mount(storage);
+  const before = storage.raw();
+  await app.click('exportGame');
+  const download = await app.download();
+  assert.match(download.name, /^chess-parti-.*\.json$/);
+  assert.deepEqual(parseBackupText(download.text), storage.saved());
+  assert.equal(storage.raw(), before);
+  assert.equal(storage.writes.length, 0);
+  assert.equal(app.requests.length, 0);
+});
+
+test('invalid and oversized imports preserve the saved and live game without opening confirmation', async () => {
+  const storage = memory(record(['e2e4', 'e7e5']));
+  const app = await mount(storage);
+  await app.click('resumeButton');
+  const before = storage.raw();
+  for (const [text, size] of [['{broken'], [JSON.stringify({format: 'emilian-chess-backup', ...record(['e2e5'])})], ['{}', 100001]]) {
+    await app.import(text, size);
+    assert.equal(storage.raw(), before);
+    assert.equal(app.element('importModal').open, false);
+    assert.deepEqual(app.scene.state.moveLog.map(move => move.uci), ['e2e4', 'e7e5']);
+  }
+  assert.equal(app.requests.length, 0);
+});
+
+test('import cancellation and Escape preserve an unresumed save; confirmation restores view, choices and undo', async () => {
+  const storage = memory(record(['e2e4', 'e7e5']));
+  const app = await mount(storage);
+  const before = storage.raw();
+  const incoming = createBackupText(record(['d2d4', 'd7d5'], {targetDepth: 12}).game, 'room');
+  for (const cancel of ['button', 'escape']) {
+    await app.import(incoming);
+    assert.equal(storage.raw(), before, 'Reading and replay validation must never save the incoming game');
+    assert.equal(app.element('importModal').open, true);
+    if (cancel === 'button') await app.element('importModal').close('cancel');
+    else await app.element('importModal').escape();
+    assert.equal(storage.raw(), before);
+    assert.equal(app.element('resumeGame').hidden, false);
+  }
+  await app.import(incoming);
+  await app.element('importModal').close('confirm');
+  assert.deepEqual(storage.saved(), {...record(['d2d4', 'd7d5'], {targetDepth: 12}), viewMode: 'room'});
+  assert.equal(storage.saved().viewMode, 'room');
+  assert.equal(app.scene.viewMode, 'room');
+  assert.equal(app.element('skillLevel').value, '12');
+  assert.equal(app.element('resumeGame').hidden, true);
+  await app.click('undo');
+  assert.deepEqual(storage.saved().game.moves, []);
+});
+
+test('restoring an engine turn requests its move only after confirmation', async () => {
+  const storage = memory(record(['d2d4', 'd7d5']));
+  const app = await mount(storage, ['e7e5']);
+  const incoming = createBackupText(record(['e2e4']).game, 'play');
+  await app.import(incoming);
+  assert.equal(app.requests.length, 0);
+  await app.element('importModal').close('confirm');
+  await waitFor(() => app.scene.state.moveLog.length === 2, 'imported engine turn');
+  assert.equal(app.requests.length, 1);
+  assert.deepEqual(storage.saved().game.moves, ['e2e4', 'e7e5']);
+});
+
+test('a restored game remains exportable when browser storage rejects writes', async () => {
+  const storage = memory();
+  storage.setItem = () => { throw new Error('Storage blocked'); };
+  const app = await mount(storage);
+  await app.import(createBackupText(record(['e2e4', 'e7e5']).game, 'room'));
+  await app.element('importModal').close('confirm');
+  assert.match(app.element('saveMessage').textContent, /kunne ikke gemme/);
+  await app.click('exportGame');
+  assert.deepEqual(parseBackupText((await app.download()).text).game.moves, ['e2e4', 'e7e5']);
+});
+
+test('confirmed import rejects a late response from the game it replaces', async () => {
+  const app = await mount(memory());
+  let reply;
+  globalThis.fetch = () => new Promise(resolve => { reply = resolve; });
+  app.move('e2', 'e4');
+  await waitFor(() => reply, 'outgoing game engine request');
+  await app.import(createBackupText(record(['d2d4', 'd7d5']).game, 'play'));
+  await app.element('importModal').close('confirm');
+  reply({ok: true, json: async () => ({move: 'e7e5', depth: 3, eval: 0})});
+  await pause(80);
+  assert.deepEqual(app.storage.saved().game.moves, ['d2d4', 'd7d5']);
+  assert.deepEqual(app.scene.state.moveLog.map(move => move.uci), ['d2d4', 'd7d5']);
 });

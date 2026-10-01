@@ -17,6 +17,11 @@ BETJENING
   dit parti efter genindlæsning. En ny start eller farveskift kræver bekræftelse,
   når der er spillet træk. Fortryd og bondeforvandling bevares efter gendannelse.
   Hvis browseren afviser lagring, vises en besked; spillet kan stadig fortsætte.
+- Under Backup af dit parti kan du hente en JSON-fil og gendanne den senere,
+  også i en anden browser. Filen behandles lokalt og uploades ikke. Den gemmer
+  spillede træk, farve, søgedybde, remisvalg og visning. Behold filen et sikkert
+  sted. Et computertræk, der endnu ikke er modtaget, beregnes efter gendannelse.
+  Filen kontrolleres før bekræftelse; annullering bevarer det nuværende parti.
 - Nulstil visning vender tilbage til spillerens side og tilpasser brættet.
 - Fuldskærm under brættet viser hele spillet, inklusive sidepanel og dialoger.
   Brug Afslut fuldskærm eller Esc for at vende tilbage. Spillet fortsætter uden
@@ -74,6 +79,20 @@ KONTROL UDFØRT 8. SEPTEMBER 2026
 - Et levende API-kald ved søgedybde 3 gav et lovligt svar ved den valgte dybde.
 - Den åbne grafikkontrol nedenfor gælder fortsat denne ændring.
 
+VERSION 2.1.0 · 1. OKTOBER 2026
+-----------------------------
+- 85 automatiske tests består, inklusive backup, ugyldige/for store filer,
+  bekræftet og annulleret import, blokeret lagring og sene motorsvar.
+- WebGL, tastaturtræk, et levende computersvar, download, annullering,
+  gendannelse og genoptagelse er afprøvet i Chrome. Fire skærmstørrelser og
+  200 % tekst på mobilbredde giver intet vandret overløb. Automatiseret
+  tilgængelighedskontrol fandt ingen sikre fejl; kontrast kræver manuel kontrol.
+- Den eksisterende lagringsnøgle og spilformat version 1 er bevaret.
+- Ingen nye eksterne tjenester, credentials eller afhængigheder er tilføjet.
+- Projektbackup og aktuel drifts-/QA-evidens opbevares i Chess-projektets Drive.
+  Spilleres browserdata indgår ikke automatisk i projektbackuppen; brug Hent
+  backup til at sikre det enkelte parti. Download er ikke cloud-synkronisering.
+
 KONTROL UDFØRT 7. SEPTEMBER 2026
 ------------------------------
 - 15 automatiske kontroller: spil/FEN, API-kontrakt og fejl, ugyldige motorsvar,
@@ -106,19 +125,20 @@ overløb. I en ramme uden tilladelse til fuldskærm skjules knappen korrekt.
 De 15 eksisterende spil- og geometritests består. Fuldskærm er kontrolleret
 i WebGL-fejltilstanden; selve 3D-renderingen er fortsat utilgængelig her.
 
-ÅBEN KONTROL FØR LIVE
---------------------
-Kontrolbrowserens WebGL er deaktiveret. Derfor er den færdige WebGL-scene,
-materialernes endelige udseende, faktisk musestyring og touch endnu ikke visuelt
-eller interaktivt godkendt i en browser med grafikadgang. Afprøv grenens preview
-på desktop og mobil før merge til main. Den nye kode er ikke en 2D-fallback:
-mangler WebGL, vises en forklaring, og spilkontrollerne deaktiveres.
+RESTERENDE KONTROL
+-----------------
+Den aktuelle Chrome-kontrol af WebGL og backup er beskrevet ved version 2.1.0.
+De tidligere kontroller ovenfor er historiske. Fuld Polypane-kontrol, touch på
+en fysisk enhed, skærmlæser, manuel kontrast og et helt parti kræver fortsat
+afprøvning. Der er ingen 2D-fallback: mangler WebGL, vises en forklaring,
+og spilkontrollerne deaktiveres.
 
 FILER OG RETTIGHEDER
 -------------------
 index.html, style.css, main.js: brugerflade.
 game.js: skakregler, remis, gendannelse og Chess-API-adapteren.
 game-storage.js: lokal lagring med fejlhåndtering.
+game-backup.js: lokal backup og validering ved genafspilning af træk.
 scene.js, board.js, camera.js: 3D-scene, fysisk spilleflade, klik og kamera.
 fullscreen.js: browserens fuldskærmsfunktion, uafhængigt af skakmotoren.
 assets/: konverterede modeller, træteksturer og genereret biblioteksbillede.
