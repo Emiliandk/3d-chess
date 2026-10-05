@@ -23,6 +23,10 @@ BETJENING
   sted. Et computertræk, der endnu ikke er modtaget, beregnes efter gendannelse.
   Filen kontrolleres før bekræftelse; annullering bevarer det nuværende parti.
 - Nulstil visning vender tilbage til spillerens side og tilpasser brættet.
+- Kameraet flyver automatisk 360 grader rundt om brættet på 90 sekunder.
+  Pause drone stopper flyvningen, og Start drone genoptager fra den aktuelle
+  vinkel. Flyvningen stopper ved input på brættet, visningsskift og nulstilling.
+  Reduceret bevægelse slår den fra. Skjulte faner flyver ikke videre.
 - Fuldskærm under brættet viser hele spillet, inklusive sidepanel og dialoger.
   Brug Afslut fuldskærm eller Esc for at vende tilbage. Spillet fortsætter uden
   genindlæsning. Knappen vises kun, når browseren tillader Fullscreen API.
@@ -78,6 +82,26 @@ KONTROL UDFØRT 8. SEPTEMBER 2026
   flere synsvinkler og størrelsesændring. De erstatter ikke visuel WebGL-QA.
 - Et levende API-kald ved søgedybde 3 gav et lovligt svar ved den valgte dybde.
 - Den åbne grafikkontrol nedenfor gælder fortsat denne ændring.
+
+VERSION 2.2.0 · 5. OKTOBER 2026
+-----------------------------
+- Automatisk 360-graders kameraflyvning på 90 sekunder, bygget i den eksisterende
+  Three.js-scene uden Spline, Figma, nye afhængigheder eller eksterne kald.
+- Hele kamerabanen tilpasses på forhånd, så bræt og relevante bordgenstande
+  bliver i billedet ved konstant afstand. Kameraet tegnes højst 30 gange/sekund.
+- 92 automatiske tests består. De nye tests dækker en komplet omgang, kameramål,
+  indramning ved desktopstørrelser, pause, genoptagelse, skjulte faner, reduceret
+  bevægelse, størrelsesændring og den tilgængelige knap uden ændring af gemte spil.
+- Lokal WebGL-indlæsning og desktoprendering er observeret uden konsolfejl.
+  Manuel test af knapper, tastatur, mus/trackpad-scrolling og browserzoom i
+  Polypane Workspace 1 afventer ejeren. Mobil-QA indgår ikke i denne ændring.
+- Kildekoden og lokale env-filer er kontrolleret: ingen secret-værdier eller
+  credential-bærende env-filer fundet; dronefunktionen bruger ingen credentials.
+  Browserkode og fejl/logging i den undersøgte frontend indeholder ingen nøgler.
+  Sites-secret-hentning er ikke relevant for denne statiske frontend; hosted
+  konfiguration og den eksisterende Chess-API-udbyders backend er uverificeret.
+- Ingen OpenAI API- eller containerkald findes i den undersøgte frontend.
+  Ekstern udbyders interne drift, logging og containerbrug er uverificeret.
 
 VERSION 2.1.0 · 1. OKTOBER 2026
 -----------------------------

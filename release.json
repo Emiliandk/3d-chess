@@ -1,5 +1,5 @@
 {
-  "version": "2.1.0",
-  "releasedOn": "2026-10-01",
-  "changes": ["Lokal backup og valideret gendannelse af partier"]
+  "version": "2.2.0",
+  "releasedOn": "2026-10-05",
+  "changes": ["Automatisk 360-graders droneflyvning rundt om skakbrættet", "Pause ved input og respekt for reduceret bevægelse"]
 }

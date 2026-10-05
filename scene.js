@@ -1,7 +1,8 @@
 import * as THREE from './vendor/three.module.js';
 import { OrbitControls } from './vendor/OrbitControls.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
-import {fitChessView} from './camera.js';
+import {fitChessView,fitChessOrbit} from './camera.js';
+import {createDroneFlight} from './drone.js';
 import {BOARD_SURFACE_Y,createBoard} from './board.js';
 import {pickChessSquare} from './picking.js';
 import {createCognacProps} from './cognac-props.js';
@@ -10,7 +11,7 @@ import {createFireplace} from './fireplace.js';
 
 const PIECES = {p:'pawn',r:'rook',n:'knight',b:'bishop',q:'queen',k:'king'};
 const NAMES = {p:'bonde',r:'tårn',n:'springer',b:'løber',q:'dronning',k:'konge'};
-export async function createChessScene({canvas,onSquare,onReady,onError,onCameraChange,onSquareFocus,viewMode=window.innerWidth<=900?'play':'room',onViewModeChange}) {
+export async function createChessScene({canvas,onSquare,onReady,onError,onCameraChange,onSquareFocus,viewMode=window.innerWidth<=900?'play':'room',onViewModeChange,onDroneChange}) {
   if(viewMode!=='play'&&viewMode!=='room')throw new RangeError('Unknown chess view mode');
   const world = new THREE.Scene();
   const renderer = new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
@@ -33,7 +34,11 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
   let needsRender=true,disposed=false,ready=false,state=null,side='w';
   let tableProps=null,cognacPass=null,fireplace=null,framingPoints=[];
   const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
-  const motionChanged=()=>{needsRender=true;};
+  const drone=createDroneFlight({camera,controls,
+    fitOrbit:angles=>fitChessOrbit(camera,controls.target,{viewMode,framingPoints,...angles}),
+    onChange:onDroneChange});
+  drone.setReducedMotion(reducedMotion.matches);
+  const motionChanged=()=>{drone.setReducedMotion(reducedMotion.matches);needsRender=true;};
   reducedMotion.addEventListener('change',motionChanged);
   let keyboardSquare={r:6,c:4},keyboardVisible=false;
   const pieceRoot=new THREE.Group();world.add(pieceRoot);
@@ -42,11 +47,12 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
   const raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
   const point=(r,c,y=BOARD_SURFACE_Y)=>new THREE.Vector3(c-3.5,y,r-3.5);
   function fitView(angles={}){return fitChessView(camera,controls.target,{viewMode,framingPoints,...angles});}
-  function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();if(ready){fitView({azimuth:controls.getAzimuthalAngle(),polar:controls.getPolarAngle()});controls.update();}needsRender=true;}
-  function resetView(nextSide=side){side=nextSide;resize();controls.target.set(0,.25,0);fitView({azimuth:(side==='b'?Math.PI:0)+.28});controls.update();needsRender=true;}
+  function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;if(!w||!h)return;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();if(ready){if(drone.getState().running)drone.refit();else fitView({azimuth:controls.getAzimuthalAngle(),polar:controls.getPolarAngle()});controls.update();}needsRender=true;}
+  function resetView(nextSide=side){drone.pause();side=nextSide;resize();controls.target.set(0,.25,0);fitView({azimuth:(side==='b'?Math.PI:0)+.28});controls.update();needsRender=true;}
   function setViewMode(nextMode){
     if(nextMode!=='play'&&nextMode!=='room')throw new RangeError('Unknown chess view mode');
     if(nextMode===viewMode)return;
+    drone.pause();
     viewMode=nextMode;
     fitView({azimuth:controls.getAzimuthalAngle()});
     controls.update();needsRender=true;onViewModeChange?.(viewMode);
@@ -69,6 +75,11 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
   function announce(){canvas.setAttribute('aria-label','3D-skakbræt. '+squareDescription(keyboardSquare.r,keyboardSquare.c));onSquareFocus?.(squareDescription(keyboardSquare.r,keyboardSquare.c));}
   function pick(e){const rect=canvas.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);return pickChessSquare({raycaster,pointer,camera,squares:pickTargets,pieces:pieceRoot.children,width:rect.width,height:rect.height});}
   const down=new Map();let gestureMoved=false;
+  // Stop before OrbitControls receives input so selection and manual camera
+  // movement always act on a stationary board.
+  const pauseDrone=()=>drone.pause();
+  const droneInputs=['pointerdown','wheel','keydown'];
+  for(const event of droneInputs)canvas.addEventListener(event,pauseDrone,{capture:true,passive:true});
   canvas.addEventListener('pointerdown',e=>{if(down.size===0)gestureMoved=false;down.set(e.pointerId,{x:e.clientX,y:e.clientY,button:e.button});if(down.size>1)gestureMoved=true;keyboardVisible=false;updateMarkers();});
   canvas.addEventListener('pointermove',e=>{const p=down.get(e.pointerId);if(p&&Math.hypot(e.clientX-p.x,e.clientY-p.y)>6)gestureMoved=true;});
   canvas.addEventListener('pointercancel',e=>{down.delete(e.pointerId);gestureMoved=true;});
@@ -79,11 +90,11 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
   canvas.addEventListener('focus',()=>{keyboardVisible=true;announce();updateMarkers();});
   canvas.addEventListener('blur',()=>{keyboardVisible=false;updateMarkers();});
   controls.addEventListener('change',()=>{needsRender=true;onCameraChange?.(Math.cos(controls.getAzimuthalAngle())>=0?'w':'b');});
-  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();ready=false;onError?.(new Error('3D-visningen mistede forbindelsen til grafikken. Genindlæs for at fortsætte.'));});
+  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();drone.pause();ready=false;onError?.(new Error('3D-visningen mistede forbindelsen til grafikken. Genindlæs for at fortsætte.'));});
   function renderScene(){if(cognacPass)cognacPass.render(world,camera);else renderer.render(world,camera);}
-  function frame(time=0){if(disposed)return;requestAnimationFrame(frame);if(document.hidden)return;controls.update();if(ready&&fireplace?.update(time,camera,reducedMotion.matches))needsRender=true;if(needsRender){renderScene();needsRender=false;}}frame();
+  function frame(time=0){if(disposed)return;requestAnimationFrame(frame);const flying=ready&&drone.update(time,{hidden:document.hidden});if(document.hidden)return;if(!flying)controls.update();const fireChanged=ready&&fireplace?.update(time,camera,reducedMotion.matches);if(flying||fireChanged)needsRender=true;if(needsRender){renderScene();needsRender=false;}}frame();
   const materials={};
-  const api={resetView,setViewMode,getViewMode:()=>viewMode,update(next){state=next;if(!ready)return;renderer.shadowMap.needsUpdate=true;for(let r=0;r<8;r++)for(let c=0;c<8;c++){const key=`${r},${c}`,p=state.board[r][c],old=pieceMeshes.get(key),signature=p?`${p.color}${p.type}`:'';if(old&&old.userData.signature!==signature){pieceRoot.remove(old);pieceMeshes.delete(key);}if(p&&!pieceMeshes.has(key)){const group=templates[p.type].clone(true);group.scale.set(1.208,1,1.208);group.position.copy(point(r,c,BOARD_SURFACE_Y));if(p.color==='b')group.rotation.y=Math.PI;group.userData.square={r,c};group.userData.signature=signature;group.traverse(n=>{if(n.isMesh){n.material=materials[p.color];n.castShadow=true;n.receiveShadow=true;}});const collar=new THREE.Mesh(new THREE.CylinderGeometry(p.type==='n'?.173:.205,p.type==='n'?.185:.21,.035,48),brass);collar.position.y=p.type==='n'?.384:.055;group.add(collar);pieceRoot.add(group);pieceMeshes.set(key,group);}}updateMarkers();announce();},dispose(){disposed=true;observer.disconnect();reducedMotion.removeEventListener('change',motionChanged);fireplace?.dispose();cognacPass?.dispose();tableProps?.dispose();controls.dispose();renderer.dispose();}};
+  const api={resetView,setViewMode,getViewMode:()=>viewMode,startDrone:()=>{if(ready)drone.start();},toggleDrone:()=>{if(ready)drone.toggle();},pauseDrone,getDroneState:drone.getState,update(next){state=next;if(!ready)return;renderer.shadowMap.needsUpdate=true;for(let r=0;r<8;r++)for(let c=0;c<8;c++){const key=`${r},${c}`,p=state.board[r][c],old=pieceMeshes.get(key),signature=p?`${p.color}${p.type}`:'';if(old&&old.userData.signature!==signature){pieceRoot.remove(old);pieceMeshes.delete(key);}if(p&&!pieceMeshes.has(key)){const group=templates[p.type].clone(true);group.scale.set(1.208,1,1.208);group.position.copy(point(r,c,BOARD_SURFACE_Y));if(p.color==='b')group.rotation.y=Math.PI;group.userData.square={r,c};group.userData.signature=signature;group.traverse(n=>{if(n.isMesh){n.material=materials[p.color];n.castShadow=true;n.receiveShadow=true;}});const collar=new THREE.Mesh(new THREE.CylinderGeometry(p.type==='n'?.173:.205,p.type==='n'?.185:.21,.035,48),brass);collar.position.y=p.type==='n'?.384:.055;group.add(collar);pieceRoot.add(group);pieceMeshes.set(key,group);}}updateMarkers();announce();},dispose(){disposed=true;drone.pause();for(const event of droneInputs)canvas.removeEventListener(event,pauseDrone,true);observer.disconnect();reducedMotion.removeEventListener('change',motionChanged);fireplace?.dispose();cognacPass?.dispose();tableProps?.dispose();controls.dispose();renderer.dispose();}};
   try{
     const [wood,rough,normal,panorama,bottleTexture,fireAtlas,...models]=await Promise.all([
       loader.loadAsync('./assets/wood_table_001_diff_1k.jpg'),loader.loadAsync('./assets/wood_table_001_rough_1k.jpg'),loader.loadAsync('./assets/wood_table_001_nor_gl_1k.jpg'),loader.loadAsync('./assets/library-panorama.png'),

@@ -10,6 +10,7 @@ let savedGame=saved?.game||null;
 let awaitingResume=Boolean(savedGame?.moves.length);
 let saveEnabled=false;
 let sceneView=null,sceneReady=false,lastColor='w';
+let droneState={running:false,reducedMotion:false};
 let viewMode=['play','room'].includes(saved?.viewMode)?saved.viewMode:window.matchMedia('(max-width: 900px)').matches?'play':'room';
 const promotion=$('promotionModal'),resetModal=$('resetModal'),drawModal=$('drawModal');
 const importModal=$('importModal');
@@ -24,10 +25,18 @@ function persist(){
     :'Denne browser kunne ikke gemme partiet. Du kan stadig spille, så længe siden er åben.';
 }
 function showViewMode(mode){viewMode=mode;$('viewPlay').setAttribute('aria-pressed',String(mode==='play'));$('viewRoom').setAttribute('aria-pressed',String(mode==='room'));persist();}
+function showDroneState(state){
+  droneState=state;
+  $('droneToggle').setAttribute('aria-pressed',String(state.running));
+  $('droneLabel').textContent=state.reducedMotion?'Drone slået fra':state.running?'Pause drone':'Start drone · 360°';
+  $('droneMessage').textContent=state.reducedMotion?'Droneflyvning er slået fra ved reduceret bevægelse.':state.running?'Droneflyvning rundt om brættet er startet.':'Droneflyvningen er sat på pause.';
+  syncControls(game.getState());
+}
 function syncControls(s){
   const playable=sceneReady&&!awaitingResume;
   for(const id of ['newGame','humanColor','skillLevel','retryEngine','claimDraw'])$(id).disabled=!playable;
   for(const id of ['resetView','viewPlay','viewRoom','resumeButton','freshButton'])$(id).disabled=!sceneReady;
+  $('droneToggle').disabled=!sceneReady||droneState.reducedMotion;
   $('undo').disabled=$('mobileUndo').disabled=!playable||!s.canUndo;
   $('exportGame').disabled=$('exportBeforeImport').disabled=!(sceneReady||savedGame);
   $('importGame').disabled=!sceneReady||importReading||Boolean(pendingImport);
@@ -88,6 +97,7 @@ $('claimDraw').addEventListener('click',()=>{
 $('confirmDraw').addEventListener('click',e=>{e.preventDefault();const move=$('drawMove').value;drawModal.close();game.claimDraw(move);$('boardCanvas').focus();});
 $('viewPlay').addEventListener('click',()=>sceneView?.setViewMode('play'));
 $('viewRoom').addEventListener('click',()=>sceneView?.setViewMode('room'));
+$('droneToggle').addEventListener('click',()=>sceneView?.toggleDrone());
 $('humanColor').addEventListener('change',e=>requestNewGame({humanColor:e.target.value}));
 $('skillLevel').addEventListener('change',e=>game.setDepth(e.target.value));
 $('resetView').addEventListener('click',()=>sceneView?.resetView(game.getState().humanColor));
@@ -143,8 +153,9 @@ if(savedGame&&!awaitingResume){game.restoreGame(savedGame);savedGame=null;}
 $('resumeGame').hidden=!awaitingResume;
 showViewMode(viewMode);showState(game.getState());
 try{
-  sceneView=await createChessScene({canvas:$('boardCanvas'),viewMode,onViewModeChange:showViewMode,onSquare:(r,c)=>{if(!awaitingResume){if(r<0)game.clearSelection();else game.selectSquare(r,c);}},onReady:()=>{$('loading').hidden=true;},onError:sceneError,onCameraChange:color=>{$('viewSide').textContent=color==='w'?'HVIDS SIDE':'SORTS SIDE';},onSquareFocus:text=>{$('squareAnnouncement').textContent=text;}});
+  sceneView=await createChessScene({canvas:$('boardCanvas'),viewMode,onViewModeChange:showViewMode,onDroneChange:showDroneState,onSquare:(r,c)=>{if(!awaitingResume){if(r<0)game.clearSelection();else game.selectSquare(r,c);}},onReady:()=>{$('loading').hidden=true;},onError:sceneError,onCameraChange:color=>{$('viewSide').textContent=color==='w'?'HVIDS SIDE':'SORTS SIDE';},onSquareFocus:text=>{$('squareAnnouncement').textContent=text;}});
   sceneReady=true;
   showState(game.getState());
+  sceneView.startDrone();
   if(!awaitingResume){saveEnabled=true;persist();await game.start();}
 }catch(error){sceneError(error);}

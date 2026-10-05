@@ -155,16 +155,21 @@ async function mount(storage = memory(), replies = []) {
   const renderer = async options => {
     callbacks = options;
     scene.viewMode = options.viewMode;
+    scene.drone={running:false,reducedMotion:false};
+    const publishDrone=()=>options.onDroneChange({...scene.drone});
     options.onReady();
     return {
       update: state => { scene.state = state; },
-      resetView: side => { scene.resetSides.push(side); options.onCameraChange(side); },
-      setViewMode: mode => { scene.viewMode = mode; options.onViewModeChange(mode); }
+      resetView: side => { scene.drone.running=false;publishDrone();scene.resetSides.push(side); options.onCameraChange(side); },
+      setViewMode: mode => { scene.drone.running=false;publishDrone();scene.viewMode = mode; options.onViewModeChange(mode); },
+      startDrone:()=>{scene.drone.running=true;publishDrone();},
+      toggleDrone:()=>{scene.drone.running=!scene.drone.running;publishDrone();}
     };
   };
   const entry = await runMain(createGame, renderer, createGameStorage, createBackupText, parseBackupText, MAX_BACKUP_BYTES, document, window,
     {reload: () => assert.fail('No reload is expected in persistence flows')});
   const app = {storage, requests, scene, dispose: entry.dispose,
+    reducedMotion:value=>{scene.drone.reducedMotion=value;scene.drone.running=false;callbacks.onDroneChange({...scene.drone});},
     async download() { const item = document.downloads.at(-1); return {name: item.name, text: await blobs.get(item.href).text()}; },
     async import(text, size = new TextEncoder().encode(text).length) {
       document.getElementById('backupFile').files = [{size, text: async () => text}];
@@ -184,6 +189,21 @@ async function mount(storage = memory(), replies = []) {
   apps.push(app);
   return app;
 }
+
+test('drone control updates accessible state, protects the saved game and disables with reduced motion',async()=>{
+  const storage=memory(record(['e2e4','e7e5']));
+  const app=await mount(storage),before=storage.raw();
+  assert.equal(app.element('droneToggle').getAttribute('aria-pressed'),'true');
+  assert.equal(app.element('droneLabel').textContent,'Pause drone');
+  await app.click('droneToggle');
+  assert.equal(app.element('droneToggle').getAttribute('aria-pressed'),'false');
+  assert.equal(app.element('droneLabel').textContent,'Start drone · 360°');
+  await app.click('droneToggle');assert.equal(app.scene.drone.running,true);
+  app.reducedMotion(true);
+  assert.equal(app.element('droneToggle').disabled,true);
+  assert.equal(app.element('droneLabel').textContent,'Drone slået fra');
+  assert.equal(storage.raw(),before);assert.equal(app.requests.length,0);
+});
 
 test('entrypoint autosaves played moves and resumes without overwriting the saved game on startup', async () => {
   const storage = memory();

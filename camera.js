@@ -17,6 +17,20 @@ export function fitChessView(camera,target,{viewMode='room',framingPoints=[],azi
   });
 }
 
+// Fit the whole route once, keeping a constant distance throughout the orbit.
+export function fitChessOrbit(camera,target,{viewMode='room',framingPoints=[],azimuth=.28,polar=.84}={}){
+  let distance=10;
+  for(let step=0;step<64;step++){
+    distance=Math.max(distance,fitChessView(camera,target,{
+      viewMode,framingPoints,azimuth:step*Math.PI/32,polar
+    }));
+  }
+  const direction=new Vector3(Math.sin(azimuth)*Math.sin(polar),Math.cos(polar),Math.cos(azimuth)*Math.sin(polar));
+  camera.position.copy(target).addScaledVector(direction,distance);
+  camera.lookAt(target);camera.updateMatrixWorld();
+  return distance;
+}
+
 export function fitBoardCamera(camera,target,{azimuth=.28,polar=.84,margin=.88,framingPoints=[]}={}){
   const points=[...corners,...framingPoints];
   const direction=new Vector3(Math.sin(azimuth)*Math.sin(polar),Math.cos(polar),Math.cos(azimuth)*Math.sin(polar));
