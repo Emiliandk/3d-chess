@@ -153,7 +153,7 @@ if(savedGame&&!awaitingResume){game.restoreGame(savedGame);savedGame=null;}
 $('resumeGame').hidden=!awaitingResume;
 showViewMode(viewMode);showState(game.getState());
 try{
-  sceneView=await createChessScene({canvas:$('boardCanvas'),viewMode,onViewModeChange:showViewMode,onDroneChange:showDroneState,onSquare:(r,c)=>{if(!awaitingResume){if(r<0)game.clearSelection();else game.selectSquare(r,c);}},onReady:()=>{$('loading').hidden=true;},onError:sceneError,onCameraChange:color=>{$('viewSide').textContent=color==='w'?'HVIDS SIDE':'SORTS SIDE';},onSquareFocus:text=>{$('squareAnnouncement').textContent=text;}});
+  sceneView=await createChessScene({canvas:$('boardCanvas'),viewMode,canMove:()=>!awaitingResume,onViewModeChange:showViewMode,onDroneChange:showDroneState,onSquare:(r,c)=>{if(!awaitingResume){if(r<0)game.clearSelection();else game.selectSquare(r,c);}},onReady:()=>{$('loading').hidden=true;},onError:sceneError,onCameraChange:color=>{$('viewSide').textContent=color==='w'?'HVIDS SIDE':'SORTS SIDE';},onSquareFocus:text=>{$('squareAnnouncement').textContent=text;}});
   sceneReady=true;
   showState(game.getState());
   sceneView.startDrone();

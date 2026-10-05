@@ -8,7 +8,11 @@ Staunton-brikker, træmaterialer og en varm biblioteksbaggrund.
 BETJENING
 ---------
 - Klik på en brik, og klik på et lovligt destinationsfelt for at flytte.
-- Hold museknappen nede og træk for at dreje 360 grader og ændre højdevinklen.
+- Du kan også gribe en af dine brikker med venstre museknap, trække den frit
+  og slippe på et lovligt felt. Brikken følger musen, og destinationer markeres.
+  Et ugyldigt slip returnerer brikken. Et kort klik bevarer klikbetjeningen.
+- Træk på et tomt område, eller brug højre museknap for at dreje 360 grader
+  og ændre højdevinklen. Kameraet holdes stille, mens du trækker en brik.
 - Rul med musehjulet for at zoome. Kameraet holdes over bordet.
 - På touch: Træk med én finger; knib med to fingre for at zoome.
 - Spilvisning giver brættet mere plads og vælges som udgangspunkt på mobil.
@@ -83,6 +87,24 @@ KONTROL UDFØRT 8. SEPTEMBER 2026
   flere synsvinkler og størrelsesændring. De erstatter ikke visuel WebGL-QA.
 - Et levende API-kald ved søgedybde 3 gav et lovligt svar ved den valgte dybde.
 - Den åbne grafikkontrol nedenfor gælder fortsat denne ændring.
+
+VERSION 2.3.0 · 5. OKTOBER 2026
+-----------------------------
+- Musetræk af egne brikker på spillerens tur, også i fuldskærm og fra alle
+  kameravinkler. Brikken følger gribepunktet og løftes lidt over brættet.
+- Lovlige felter og den aktuelle destination markeres. Ugyldige slip uden
+  for brættet eller canvas returnerer brikken uden at ændre partiet.
+- Kamera og drone står stille under træk. Klikbetjening, rokade, slag,
+  en passant, forvandling, fortryd og automatisk gemning bruger de samme regler.
+- Afbrudt input, mistet fokus, skjult fane, størrelsesændring og en ændret
+  stilling returnerer brikken. Gemte partier skal genoptages før briktræk.
+- 102 automatiske tests består. Nye kontroller bruger rigtige kameraberegninger,
+  raycasting, OrbitControls og skakregler samt en simuleret DOM-eventflade;
+  de erstatter ikke manuel kontrol af musetræk og pointer capture i browseren.
+- Manuel test af musetræk, fuldskærm, knapper, tastatur og mus/trackpad-scrolling
+  i Polypane Workspace 1 afventer ejeren. Desktop er målplatformen.
+- Ingen nye integrationer, credentials, afhængigheder eller OpenAI-containerkald
+  er tilføjet. Hosted konfiguration og ekstern udbyders drift er uverificeret.
 
 VERSION 2.2.1 · 5. OKTOBER 2026
 -----------------------------
@@ -176,6 +198,7 @@ game.js: skakregler, remis, gendannelse og Chess-API-adapteren.
 game-storage.js: lokal lagring med fejlhåndtering.
 game-backup.js: lokal backup og validering ved genafspilning af træk.
 scene.js, board.js, camera.js: 3D-scene, fysisk spilleflade, klik og kamera.
+piece-drag.js: musetræk, gribepunkt, destination og afbrudt input.
 fullscreen.js: browserens fuldskærmsfunktion, uafhængigt af skakmotoren.
 assets/: konverterede modeller, træteksturer og genereret biblioteksbillede.
 vendor/: Three.js r180 med relative modulimporter og original MIT-licens.

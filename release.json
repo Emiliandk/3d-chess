@@ -1,5 +1,5 @@
 {
-  "version": "2.2.1",
+  "version": "2.3.0",
   "releasedOn": "2026-10-05",
-  "changes": ["Fuldskærm viser kun 3D-scenen", "Fokus på brættet i fuldskærm og tilbage til knappen ved afslutning"]
+  "changes": ["Grib og flyt dine brikker med musen", "Lovlige destinationer markeres, og ugyldige slip returnerer brikken", "Drej kameraet fra tomme områder eller med højre museknap"]
 }

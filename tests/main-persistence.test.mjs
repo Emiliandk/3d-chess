@@ -169,6 +169,7 @@ async function mount(storage = memory(), replies = []) {
   const entry = await runMain(createGame, renderer, createGameStorage, createBackupText, parseBackupText, MAX_BACKUP_BYTES, document, window,
     {reload: () => assert.fail('No reload is expected in persistence flows')});
   const app = {storage, requests, scene, dispose: entry.dispose,
+    canMove:()=>callbacks.canMove(),
     reducedMotion:value=>{scene.drone.reducedMotion=value;scene.drone.running=false;callbacks.onDroneChange({...scene.drone});},
     async download() { const item = document.downloads.at(-1); return {name: item.name, text: await blobs.get(item.href).text()}; },
     async import(text, size = new TextEncoder().encode(text).length) {
@@ -220,6 +221,7 @@ test('entrypoint autosaves played moves and resumes without overwriting the save
   const writes = storage.writes.length;
   const resumed = await mount(storage, ['b8c6']);
   assert.equal(resumed.element('resumeGame').hidden, false);
+  assert.equal(resumed.canMove(),false,'Piece dragging must be blocked before choosing to resume');
   assert.equal(resumed.element('newGame').disabled, true);
   assert.equal(resumed.element('humanColor').disabled, true);
   assert.equal(resumed.scene.viewMode, 'play');
@@ -230,6 +232,7 @@ test('entrypoint autosaves played moves and resumes without overwriting the save
   assert.equal(resumed.requests.length, 0);
 
   await resumed.click('resumeButton');
+  assert.equal(resumed.canMove(),true,'Piece dragging is enabled after the saved game is resumed');
   assert.equal(resumed.element('resumeGame').hidden, true);
   assert.equal(resumed.element('newGame').disabled, false);
   assert.equal(resumed.element('moveCount').textContent, '2 træk');
