@@ -3,16 +3,22 @@ const button=document.getElementById('fullscreenToggle');
 const label=document.getElementById('fullscreenLabel');
 const message=document.getElementById('fullscreenMessage');
 const target=document.documentElement;
+const canvas=document.getElementById('boardCanvas');
 
 if(button && typeof target.requestFullscreen==='function' &&
    typeof document.exitFullscreen==='function' && document.fullscreenEnabled) {
-  let pending=false;
+  let pending=false,wasActive=false;
   function sync() {
     const active=document.fullscreenElement===target;
     button.setAttribute('aria-pressed',String(active));
     label.textContent=active?'Afslut fuldskærm':'Fuldskærm';
-    button.title=active?'Afslut fuldskærm (Esc)':'Vis hele spillet i fuldskærm';
+    button.title=active?'Afslut fuldskærm (Esc)':'Vis 3D-scenen i fuldskærm (Esc afslutter)';
     button.disabled=pending;
+    if(active!==wasActive&&(active||!pending)){
+      if(active)canvas?.focus({preventScroll:true});
+      else button.focus({preventScroll:true});
+      wasActive=active;
+    }
   }
   button.hidden=false;
   document.addEventListener('fullscreenchange',sync);

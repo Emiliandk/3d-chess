@@ -27,9 +27,10 @@ BETJENING
   Pause drone stopper flyvningen, og Start drone genoptager fra den aktuelle
   vinkel. Flyvningen stopper ved input på brættet, visningsskift og nulstilling.
   Reduceret bevægelse slår den fra. Skjulte faner flyver ikke videre.
-- Fuldskærm under brættet viser hele spillet, inklusive sidepanel og dialoger.
-  Brug Afslut fuldskærm eller Esc for at vende tilbage. Spillet fortsætter uden
-  genindlæsning. Knappen vises kun, når browseren tillader Fullscreen API.
+- Fuldskærm under brættet lader kun 3D-scenen fylde hele skærmen. Sidepanel,
+  overskrifter og værktøjslinjer skjules. Esc vender tilbage til den normale
+  visning. Spillet og droneflyvningen fortsætter uden genindlæsning. Nødvendige
+  spildialoger kan stadig åbnes. Knappen vises kun, når Fullscreen API tillades.
 - På det fokuserede bræt: Piletaster vælger felter, Enter/mellemrum vælger/flytter,
   Escape fjerner markering, Skift+piletaster drejer kameraet, +/- zoomer, R nulstiller.
   Piletaster følger brættets koordinater, også når kameraet er drejet.
@@ -82,6 +83,17 @@ KONTROL UDFØRT 8. SEPTEMBER 2026
   flere synsvinkler og størrelsesændring. De erstatter ikke visuel WebGL-QA.
 - Et levende API-kald ved søgedybde 3 gav et lovligt svar ved den valgte dybde.
 - Den åbne grafikkontrol nedenfor gælder fortsat denne ændring.
+
+VERSION 2.2.1 · 5. OKTOBER 2026
+-----------------------------
+- Fuldskærm viser kun 3D-scenen uden header, sidepanel, overskrifter og
+  værktøjslinjer. Brættets billedtekst og nødvendige spildialoger bevares.
+- Brættet får fokus ved indgang. Esc afslutter, og fokus returnerer til
+  fuldskærmsknappen. Den normale visning vender tilbage uden genindlæsning.
+- De 92 eksisterende automatiske tests består. Manuel fuldskærmskontrol,
+  knapper, tastatur og mus/trackpad i Polypane Workspace 1 afventer ejeren.
+- Ingen nye integrationer, credentials eller OpenAI-containerkald er tilføjet.
+  Hosted konfiguration og ekstern udbyders drift er fortsat uverificeret.
 
 VERSION 2.2.0 · 5. OKTOBER 2026
 -----------------------------
