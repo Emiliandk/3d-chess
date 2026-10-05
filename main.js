@@ -13,7 +13,7 @@ let sceneView=null,sceneReady=false,lastColor='w';
 let droneState={running:false,reducedMotion:false};
 let viewMode=['play','room'].includes(saved?.viewMode)?saved.viewMode:window.matchMedia('(max-width: 900px)').matches?'play':'room';
 const promotion=$('promotionModal'),resetModal=$('resetModal'),drawModal=$('drawModal');
-const importModal=$('importModal');
+const importModal=$('importModal'),resumeModal=$('resumeModal');
 let pendingImport=null,importReading=false,importFocus=null;
 const drawLabels={'threefold':'tredje gentagelse','fifty-move':'50-træksreglen','fivefold':'femte gentagelse','seventy-five-move':'75-træksreglen','insufficient-material':'utilstrækkeligt materiale'};
 let previousFocus=null,resetFocus=null,resetOptions=null;
@@ -68,7 +68,13 @@ function showState(s){
   persist();
 }
 const game=createGame({onChange:showState});
-function finishResumeChoice(){awaitingResume=false;savedGame=null;saveEnabled=true;$('resumeGame').hidden=true;showState(game.getState());}
+function finishResumeChoice(){awaitingResume=false;savedGame=null;saveEnabled=true;$('resumeGame').hidden=true;if(resumeModal.open)resumeModal.close();showState(game.getState());}
+function offerResumeChoice(){
+  if(!awaitingResume||!sceneReady)return false;
+  sceneView?.pauseDrone();
+  if(!resumeModal.open&&!resetModal.open&&!importModal.open){resumeModal.showModal();$('resumeContinue').focus();}
+  return true;
+}
 async function startFresh(options={}){finishResumeChoice();game.newGame(options);sceneView?.resetView(game.getState().humanColor);await game.start();}
 function requestNewGame(options={}){
   $('humanColor').value=game.getState().humanColor;
@@ -77,13 +83,18 @@ function requestNewGame(options={}){
 }
 $('newGame').addEventListener('click',()=>requestNewGame());
 $('freshButton').addEventListener('click',()=>requestNewGame());
-$('resumeButton').addEventListener('click',async()=>{
+async function resumeSavedGame(){
   if(!savedGame||!game.restoreGame(savedGame)){
     finishResumeChoice();
     $('saveMessage').textContent='Det gemte parti kunne ikke gendannes. Et nyt parti er klar.';
   }else finishResumeChoice();
   await game.start();
-});
+}
+$('resumeButton').addEventListener('click',resumeSavedGame);
+$('resumeContinue').addEventListener('click',async()=>{resumeModal.close();await resumeSavedGame();$('boardCanvas').focus();});
+$('resumeFresh').addEventListener('click',()=>{resumeModal.close();requestNewGame();});
+resumeModal.addEventListener('close',()=>{if(!resetModal.open&&!importModal.open&&!promotion.open)$('boardCanvas').focus();});
+document.addEventListener('fullscreenchange',()=>{if(document.fullscreenElement)offerResumeChoice();});
 resetModal.addEventListener('close',()=>{const options=resetOptions;resetOptions=null;resetFocus?.focus();if(resetModal.returnValue==='confirm'&&options)void startFresh(options);});
 $('undo').addEventListener('click',()=>game.undo());
 $('mobileUndo').addEventListener('click',()=>game.undo());
@@ -153,9 +164,10 @@ if(savedGame&&!awaitingResume){game.restoreGame(savedGame);savedGame=null;}
 $('resumeGame').hidden=!awaitingResume;
 showViewMode(viewMode);showState(game.getState());
 try{
-  sceneView=await createChessScene({canvas:$('boardCanvas'),viewMode,canMove:()=>!awaitingResume,onViewModeChange:showViewMode,onDroneChange:showDroneState,onSquare:(r,c)=>{if(!awaitingResume){if(r<0)game.clearSelection();else game.selectSquare(r,c);}},onReady:()=>{$('loading').hidden=true;},onError:sceneError,onCameraChange:color=>{$('viewSide').textContent=color==='w'?'HVIDS SIDE':'SORTS SIDE';},onSquareFocus:text=>{$('squareAnnouncement').textContent=text;}});
+  sceneView=await createChessScene({canvas:$('boardCanvas'),viewMode,canMove:()=>!awaitingResume,onInputBlocked:offerResumeChoice,onViewModeChange:showViewMode,onDroneChange:showDroneState,onSquare:(r,c)=>{if(awaitingResume){if(r>=0)offerResumeChoice();return;}if(r<0)game.clearSelection();else game.selectSquare(r,c);},onReady:()=>{$('loading').hidden=true;},onError:sceneError,onCameraChange:color=>{$('viewSide').textContent=color==='w'?'HVIDS SIDE':'SORTS SIDE';},onSquareFocus:text=>{$('squareAnnouncement').textContent=text;}});
   sceneReady=true;
   showState(game.getState());
   sceneView.startDrone();
+  if(document.fullscreenElement)offerResumeChoice();
   if(!awaitingResume){saveEnabled=true;persist();await game.start();}
 }catch(error){sceneError(error);}

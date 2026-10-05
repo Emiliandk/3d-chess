@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17130f">
-  <meta name="application-version" content="2.3.0">
+  <meta name="application-version" content="2.3.1">
   <meta name="description" content="Prøv 3D Chess mod Stockfish. Drej brættet, vælg computerens søgning, og spil i dit eget tempo i varme biblioteksomgivelser.">
   <title>Chess</title>
   <link rel="stylesheet" href="./style.css">
@@ -79,6 +79,7 @@
     </aside>
   </main>
   <footer class="site-footer"><span>ET SKAKSPIL AF EMILIAN</span><span>Gode træk må gerne tage tid.</span></footer>
+  <dialog id="resumeModal" aria-labelledby="resumeChoiceTitle" aria-describedby="resumeChoiceDescription"><h2 id="resumeChoiceTitle">Dit sidste parti venter.</h2><p id="resumeChoiceDescription">Fortsæt dit gemte parti for at flytte brikkerne, eller vælg at starte forfra.</p><div class="dialog-actions"><button class="button primary" id="resumeContinue" type="button" autofocus>Fortsæt dit parti</button><button class="button secondary" id="resumeFresh" type="button">Start forfra</button></div><form method="dialog" class="dialog-actions"><button class="text-button" value="cancel">Tilbage</button></form></dialog>
   <dialog id="resetModal" aria-labelledby="resetTitle" aria-describedby="resetDescription"><h2 id="resetTitle">Begynde på et nyt parti?</h2><p id="resetDescription">Det nuværende parti bliver erstattet, også i den version, der er gemt i denne browser.</p><form method="dialog" class="dialog-actions"><button class="button secondary" value="cancel" autofocus>Behold partiet</button><button class="button primary" value="confirm">Start nyt parti</button></form></dialog>
   <dialog id="importModal" aria-labelledby="importTitle" aria-describedby="importDescription"><h2 id="importTitle">Gendan partiet fra filen?</h2><p id="importDescription"></p><p>Hent en backup af dit nuværende parti først, hvis du vil beholde det.</p><button class="button secondary" id="exportBeforeImport" type="button">Hent nuværende parti</button><form method="dialog" class="dialog-actions"><button class="button secondary" value="cancel" autofocus>Behold partiet</button><button class="button primary" value="confirm">Gendan partiet</button></form></dialog>
   <dialog id="drawModal" aria-labelledby="drawTitle" aria-describedby="drawDescription"><h2 id="drawTitle">Kræv remis med dit næste træk</h2><p id="drawDescription">Vælg det træk, du vil kræve remis på grundlag af. Partiet afsluttes, uden at trækket bliver spillet.</p><label for="drawMove">Dit påtænkte træk</label><select id="drawMove"></select><form method="dialog" class="dialog-actions"><button class="button secondary" value="cancel" autofocus>Spil videre</button><button class="button primary" id="confirmDraw" value="confirm">Kræv remis</button></form></dialog>

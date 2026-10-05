@@ -12,7 +12,7 @@ import {createFireplace} from './fireplace.js';
 
 const PIECES = {p:'pawn',r:'rook',n:'knight',b:'bishop',q:'queen',k:'king'};
 const NAMES = {p:'bonde',r:'tårn',n:'springer',b:'løber',q:'dronning',k:'konge'};
-export async function createChessScene({canvas,onSquare,onReady,onError,onCameraChange,onSquareFocus,canMove=()=>true,viewMode=window.innerWidth<=900?'play':'room',onViewModeChange,onDroneChange}) {
+export async function createChessScene({canvas,onSquare,onReady,onError,onCameraChange,onSquareFocus,canMove=()=>true,onInputBlocked,viewMode=window.innerWidth<=900?'play':'room',onViewModeChange,onDroneChange}) {
   if(viewMode!=='play'&&viewMode!=='room')throw new RangeError('Unknown chess view mode');
   const world = new THREE.Scene();
   const renderer = new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
@@ -84,6 +84,7 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
   for(const event of droneInputs)canvas.addEventListener(event,pauseDrone,{capture:true,passive:true});
   const chooseSquare=sq=>{keyboardSquare={...sq};keyboardVisible=false;announce();onSquare(sq.r,sq.c);};
   pieceDrag=createPieceDrag({canvas,camera,controls,pick,getPiece:sq=>pieceMeshes.get(`${sq.r},${sq.c}`),getState:()=>state,canMove:()=>ready&&down.size===0&&canMove(),
+    onBlocked:onInputBlocked,
     select:sq=>{onSquare(-1,-1);chooseSquare(sq);},click:chooseSquare,
     drop:(from,to)=>{if(state?.selected?.r===from.r&&state?.selected?.c===from.c)chooseSquare(to);},
     onChange:()=>{renderer.shadowMap.needsUpdate=true;updateMarkers();}});

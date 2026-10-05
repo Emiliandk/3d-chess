@@ -1,5 +1,5 @@
 {
-  "version": "2.3.0",
+  "version": "2.3.1",
   "releasedOn": "2026-10-05",
-  "changes": ["Grib og flyt dine brikker med musen", "Lovlige destinationer markeres, og ugyldige slip returnerer brikken", "Drej kameraet fra tomme områder eller med højre museknap"]
+  "changes": ["Gemt parti vises som et valg i fuldskærm", "Et forsøg på at gribe en brik viser det ventende valg om at fortsætte", "Start forfra bevarer den eksisterende bekræftelse"]
 }

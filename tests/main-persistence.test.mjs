@@ -118,6 +118,10 @@ function fakeDocument() {
   }
   const elements = new Map([...html.matchAll(/<([a-z]+)\b([^>]*\bid="([^"]+)"[^>]*)>/g)]
     .map(([, tag, attrs, id]) => [id, new Element(tag, attrs)]));
+  const events=new Element('document');
+  document.addEventListener=events.addEventListener.bind(events);
+  document.emit=events.emit.bind(events);
+  document.fullscreenElement=null;
   document.getElementById = id => {
     assert.ok(elements.has(id), `#${id} must exist in the actual index.html`);
     return elements.get(id);
@@ -163,6 +167,7 @@ async function mount(storage = memory(), replies = []) {
       resetView: side => { scene.drone.running=false;publishDrone();scene.resetSides.push(side); options.onCameraChange(side); },
       setViewMode: mode => { scene.drone.running=false;publishDrone();scene.viewMode = mode; options.onViewModeChange(mode); },
       startDrone:()=>{scene.drone.running=true;publishDrone();},
+      pauseDrone:()=>{scene.drone.running=false;publishDrone();},
       toggleDrone:()=>{scene.drone.running=!scene.drone.running;publishDrone();}
     };
   };
@@ -170,6 +175,8 @@ async function mount(storage = memory(), replies = []) {
     {reload: () => assert.fail('No reload is expected in persistence flows')});
   const app = {storage, requests, scene, dispose: entry.dispose,
     canMove:()=>callbacks.canMove(),
+    blockedInput:()=>callbacks.onInputBlocked(),
+    fullscreen:async()=>{document.fullscreenElement=document.body;await document.emit('fullscreenchange');},
     reducedMotion:value=>{scene.drone.reducedMotion=value;scene.drone.running=false;callbacks.onDroneChange({...scene.drone});},
     async download() { const item = document.downloads.at(-1); return {name: item.name, text: await blobs.get(item.href).text()}; },
     async import(text, size = new TextEncoder().encode(text).length) {
@@ -204,6 +211,39 @@ test('drone control updates accessible state, protects the saved game and disabl
   assert.equal(app.element('droneToggle').disabled,true);
   assert.equal(app.element('droneLabel').textContent,'Drone slået fra');
   assert.equal(storage.raw(),before);assert.equal(app.requests.length,0);
+});
+
+test('fullscreen exposes the pending resume choice, preserves a declined save, and enables moves after continuing',async()=>{
+  const storage=memory(record(['e2e4','e7e5'])),before=storage.raw();
+  const app=await mount(storage,['d7d5']);
+  await app.fullscreen();
+  assert.equal(app.element('resumeModal').open,true);
+  assert.equal(app.scene.drone.running,false);
+  assert.equal(app.canMove(),false);
+  assert.equal(storage.raw(),before);assert.equal(app.requests.length,0);
+  await app.element('resumeModal').escape();
+  assert.equal(app.canMove(),false);assert.equal(storage.raw(),before);
+  assert.equal(app.blockedInput(),true,'A blocked grab opens the same choice without starting a camera gesture');
+  assert.equal(app.element('resumeModal').open,true);
+  await app.click('resumeContinue');
+  assert.equal(app.element('resumeModal').open,false);
+  assert.equal(app.canMove(),true);assert.equal(app.blockedInput(),false);
+  assert.deepEqual(app.scene.state.moveLog.map(move=>move.uci),['e2e4','e7e5']);
+  app.move('d2','d4');
+  assert.deepEqual(storage.saved().game.moves,['e2e4','e7e5','d2d4']);
+  await waitFor(()=>app.scene.state.moveLog.length===4,'resumed engine reply');
+});
+
+test('starting over from the resume dialog still requires confirmation and cancellation keeps the saved game',async()=>{
+  const storage=memory(record(['e2e4','e7e5'])),before=storage.raw(),app=await mount(storage);
+  app.blockedInput();await app.click('resumeFresh');
+  assert.equal(app.element('resumeModal').open,false);
+  assert.equal(app.element('resetModal').open,true);assert.equal(storage.raw(),before);
+  await app.element('resetModal').close('cancel');
+  assert.equal(app.canMove(),false);assert.equal(storage.raw(),before);
+  app.blockedInput();await app.click('resumeFresh');
+  await app.element('resetModal').close('confirm');
+  assert.equal(app.canMove(),true);assert.deepEqual(storage.saved().game.moves,[]);
 });
 
 test('entrypoint autosaves played moves and resumes without overwriting the saved game on startup', async () => {

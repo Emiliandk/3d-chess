@@ -19,7 +19,7 @@ export function projectDragPointer({event,canvas,camera,height,raycaster=new Ray
   return raycaster.ray.intersectPlane(new Plane(new Vector3(0,1,0),-height),new Vector3());
 }
 
-export function createPieceDrag({canvas,camera,controls,pick,getPiece,getState,canMove=()=>true,select,click,drop,onChange,windowTarget=window,documentTarget=document}){
+export function createPieceDrag({canvas,camera,controls,pick,getPiece,getState,canMove=()=>true,onBlocked,select,click,drop,onChange,windowTarget=window,documentTarget=document}){
   const raycaster=new Raycaster(),listeners=[];
   let active=null,selecting=false;
   function available(square){
@@ -69,7 +69,14 @@ export function createPieceDrag({canvas,camera,controls,pick,getPiece,getState,c
     if(active){finish();return;}
     if(event.pointerType!=='mouse'||event.button!==0||event.isPrimary===false)return;
     const from=pick(event);
-    if(!from||!available(from))return;
+    if(!from)return;
+    if(!available(from)){
+      // A pending resume choice must consume this press before the camera
+      // starts rotating behind the dialog. Other unavailable pieces still
+      // allow the normal camera gesture.
+      if(onBlocked?.(from)){event.stopImmediatePropagation();event.preventDefault();}
+      return;
+    }
     const piece=getPiece(from);if(!piece)return;
     const enabled=controls.enabled,damping=controls.enableDamping;
     controls.enableDamping=false;controls.update();controls.enabled=false;

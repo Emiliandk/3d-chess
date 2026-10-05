@@ -31,7 +31,7 @@ class Surface{
 const apps=[];
 afterEach(()=>{for(const app of apps.splice(0)){app.drag.dispose();app.controls.dispose();app.game.dispose();}});
 const square=name=>({r:8-Number(name[1]),c:name.charCodeAt(0)-97});
-function setup({azimuth=.28,polar=.84,moves=[],allowed=true,humanColor='w'}={}){
+function setup({azimuth=.28,polar=.84,moves=[],allowed=true,humanColor='w',onBlocked}={}){
   const canvas=new Surface(),windowTarget=new Surface(),documentTarget=new Surface();canvas.root=documentTarget;
   const camera=new PerspectiveCamera(38,canvas.clientWidth/canvas.clientHeight,.1,150);
   const controls=new OrbitControls(camera,canvas);controls.target.set(0,.25,0);controls.enableDamping=true;controls.enablePan=false;
@@ -51,6 +51,7 @@ function setup({azimuth=.28,polar=.84,moves=[],allowed=true,humanColor='w'}={}){
   const pointer=new Vector2(),raycaster=new Raycaster(),clicks=[],drops=[];
   const app={canvas,camera,controls,game,meshes,windowTarget,documentTarget,allowed,screen,clicks,drops};
   drag=createPieceDrag({canvas,camera,controls,windowTarget,documentTarget,
+    onBlocked,
     getState:game.getState,canMove:()=>app.allowed,getPiece:from=>meshes.get(`${from.r},${from.c}`),
     pick:event=>{const rect=canvas.getBoundingClientRect();pointer.set((event.clientX-rect.left)/rect.width*2-1,1-(event.clientY-rect.top)/rect.height*2);return pickChessSquare({raycaster,pointer,camera,squares:board.squares,pieces:pieces.children,width:rect.width,height:rect.height});},
     select:from=>{game.clearSelection();game.selectSquare(from.r,from.c);},
@@ -147,6 +148,16 @@ test('unconfirmed games, opponent pieces, computer turns and ended games cannot 
   const opponent=setup();opponent.press('e7');assert.equal(opponent.controls.enabled,true);
   const computer=setup({moves:['e2e4']});computer.press('d2');assert.equal(computer.controls.enabled,true);
   const ended=setup({moves:['f2f3','e7e5','g2g4','d8h4']});ended.press('e2');assert.equal(ended.controls.enabled,true);
+});
+
+test('a handled resume block consumes the press before OrbitControls can capture or rotate',()=>{
+  let prompts=0;
+  const app=setup({allowed:false,onBlocked:()=>{prompts++;return true;}}),before=app.camera.position.clone(),press=app.press('e2');
+  assert.equal(prompts,1);assert.equal(press.down.stopped,true);assert.equal(press.down.defaultPrevented,true);
+  assert.equal(app.canvas.hasPointerCapture(1),false);assert.equal(app.controls.enabled,true);
+  app.canvas.emit('pointermove',{...press.event,clientX:press.event.clientX+80});
+  app.canvas.emit('pointerup',{...press.event,buttons:0});
+  assert.ok(app.camera.position.equals(before));assert.equal(app.game.getState().moveLog.length,0);
 });
 
 test('a new position or cleared selection cancels an in-progress drag before a stale drop',()=>{

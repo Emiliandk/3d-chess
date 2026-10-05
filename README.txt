@@ -88,6 +88,21 @@ KONTROL UDFØRT 8. SEPTEMBER 2026
 - Et levende API-kald ved søgedybde 3 gav et lovligt svar ved den valgte dybde.
 - Den åbne grafikkontrol nedenfor gælder fortsat denne ændring.
 
+VERSION 2.3.1 · 5. OKTOBER 2026
+-----------------------------
+- Rettet en skjult blokering: et gemt parti ventede på Fortsæt dit parti,
+  mens fuldskærm skjulte banneret med valget. Brikkerne kunne derfor ikke flyttes.
+- Fuldskærm og forsøg på brikinput viser nu valget som en dialog og pauser
+  droneflyvningen. Fortsæt åbner det gemte parti; Start forfra kræver stadig
+  bekræftelse. Tilbage og annullering bevarer det gemte parti.
+- 105 automatiske tests består, inklusive dialogforløb, uændrede gemte data,
+  fortsatte træk og beskyttelse mod kamerabevægelse bag dialogen.
+- I browserpreview er dialogen i fuldskærm, annullering, genåbning ved
+  brikinput, gendannelse og et efterfølgende musetræk verificeret.
+  Ejerens manuelle Polypane-kontrol afventer fortsat.
+- Ingen nye integrationer, credentials, afhængigheder eller containerkald.
+  Hosted konfiguration og ekstern udbyders drift er fortsat uverificeret.
+
 VERSION 2.3.0 · 5. OKTOBER 2026
 -----------------------------
 - Musetræk af egne brikker på spillerens tur, også i fuldskærm og fra alle
