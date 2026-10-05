@@ -35,7 +35,7 @@ BETJENING
   overskrifter og værktøjslinjer skjules. Esc vender tilbage til den normale
   visning. Spillet og droneflyvningen fortsætter uden genindlæsning. Nødvendige
   spildialoger kan stadig åbnes. Knappen vises kun, når Fullscreen API tillades.
-- På det fokuserede bræt: Piletaster vælger felter, Enter/mellemrum vælger/flytter,
+- På det fokuserede bræt: Piletaster vælger felter, Enter vælger/flytter,
   Escape fjerner markering, Skift+piletaster drejer kameraet, +/- zoomer, R nulstiller.
   Piletaster følger brættets koordinater, også når kameraet er drejet.
 
@@ -87,6 +87,21 @@ KONTROL UDFØRT 8. SEPTEMBER 2026
   flere synsvinkler og størrelsesændring. De erstatter ikke visuel WebGL-QA.
 - Et levende API-kald ved søgedybde 3 gav et lovligt svar ved den valgte dybde.
 - Den åbne grafikkontrol nedenfor gælder fortsat denne ændring.
+
+VERSION 2.3.2 · 5. OKTOBER 2026
+-----------------------------
+- Mellemrumstasten starter og stopper den eksisterende 360°-rotation.
+  En holdt tast skifter kun én gang; genvejen overtager ikke betjeningen af
+  felter, fokuserede knapper, links eller åbne dialoger.
+- Knappen viser Spacebar to Start/Stop Rotation og er også synlig øverst til
+  højre i fuldskærm. Knappen kan fortsat betjenes med musen.
+- Enter vælger/flytter brikker med tastaturet. Hjælpetekst og tastaturgenvej
+  er opdateret, og reduceret bevægelse respekteres fortsat.
+- 107 automatiske tests består. Ejerens manuelle kontrol af knapper,
+  tastatur og mus/trackpad i Polypane Workspace 1 afventer fortsat.
+- Browserpreview: genvejen starter/stopper rotationen i almindelig visning
+  og fuldskærm, knappen forbliver synlig, og ingen konsolfejl er registreret.
+- Ingen nye integrationer, credentials, afhængigheder eller containerkald.
 
 VERSION 2.3.1 · 5. OKTOBER 2026
 -----------------------------

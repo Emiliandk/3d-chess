@@ -1,5 +1,5 @@
 {
-  "version": "2.3.1",
+  "version": "2.3.2",
   "releasedOn": "2026-10-05",
-  "changes": ["Gemt parti vises som et valg i fuldskærm", "Et forsøg på at gribe en brik viser det ventende valg om at fortsætte", "Start forfra bevarer den eksisterende bekræftelse"]
+  "changes": ["Mellemrum starter og stopper rotation rundt om brættet", "Spacebar to Start/Stop Rotation er synlig i fuldskærm", "Enter vælger og flytter fortsat brikker med tastaturet"]
 }

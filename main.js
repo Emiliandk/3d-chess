@@ -28,8 +28,9 @@ function showViewMode(mode){viewMode=mode;$('viewPlay').setAttribute('aria-press
 function showDroneState(state){
   droneState=state;
   $('droneToggle').setAttribute('aria-pressed',String(state.running));
-  $('droneLabel').textContent=state.reducedMotion?'Drone slået fra':state.running?'Pause drone':'Start drone · 360°';
-  $('droneMessage').textContent=state.reducedMotion?'Droneflyvning er slået fra ved reduceret bevægelse.':state.running?'Droneflyvning rundt om brættet er startet.':'Droneflyvningen er sat på pause.';
+  $('droneLabel').textContent=state.reducedMotion?'Rotation slået fra':'Spacebar to Start/Stop Rotation';
+  $('droneToggle').title=state.reducedMotion?'Rotation er slået fra ved reduceret bevægelse.':state.running?'Stop rotation (Spacebar)':'Start rotation (Spacebar)';
+  $('droneMessage').textContent=state.reducedMotion?'Rotation er slået fra ved reduceret bevægelse.':state.running?'Rotation rundt om brættet er startet.':'Rotationen er sat på pause.';
   syncControls(game.getState());
 }
 function syncControls(s){
@@ -109,6 +110,16 @@ $('confirmDraw').addEventListener('click',e=>{e.preventDefault();const move=$('d
 $('viewPlay').addEventListener('click',()=>sceneView?.setViewMode('play'));
 $('viewRoom').addEventListener('click',()=>sceneView?.setViewMode('room'));
 $('droneToggle').addEventListener('click',()=>sceneView?.toggleDrone());
+document.addEventListener('keydown',event=>{
+  if(event.defaultPrevented||(event.code!=='Space'&&event.key!==' ')||event.altKey||event.ctrlKey||event.metaKey||event.shiftKey)return;
+  if(!sceneReady||droneState.reducedMotion||[promotion,resetModal,drawModal,importModal,resumeModal].some(dialog=>dialog.open))return;
+  // Preserve Space's native action on focused controls and in editable content.
+  if(event.target?.closest('button,a,input,textarea,select,summary,[contenteditable]:not([contenteditable="false"]),[role="textbox"]'))return;
+  // Capture before the canvas: its other keys pause the camera, and Enter
+  // continues to select/move pieces. A held Space toggles only once.
+  event.preventDefault();event.stopPropagation();
+  if(!event.repeat)sceneView.toggleDrone();
+},true);
 $('humanColor').addEventListener('change',e=>requestNewGame({humanColor:e.target.value}));
 $('skillLevel').addEventListener('change',e=>game.setDepth(e.target.value));
 $('resetView').addEventListener('click',()=>sceneView?.resetView(game.getState().humanColor));

@@ -82,7 +82,8 @@ function fakeDocument() {
     }
     async emit(type, details = {}) {
       const event = {target: this, defaultPrevented: false,
-        preventDefault() { this.defaultPrevented = true; }, ...details};
+        preventDefault() { this.defaultPrevented = true; },
+        stopPropagation() { this.propagationStopped = true; }, ...details};
       await Promise.all((this.listeners.get(type) || []).map(listener => listener(event)));
       return event;
     }
@@ -95,6 +96,11 @@ function fakeDocument() {
     focus() { document.activeElement = this; }
     setAttribute(key, value) { this.attributes.set(key, String(value)); }
     getAttribute(key) { return this.attributes.get(key) ?? null; }
+    closest(selector) {
+      return selector.split(',').some(part=>part===this.tagName.toLowerCase()
+        ||part==='[role="textbox"]'&&this.getAttribute('role')==='textbox'
+        ||part==='[contenteditable]:not([contenteditable="false"])'&&this.attributes.has('contenteditable')&&this.getAttribute('contenteditable')!=='false')?this:null;
+    }
     append(...children) { this.children.push(...children); }
     remove() {}
     replaceChildren(...children) { this.children = [...children]; }
@@ -177,6 +183,8 @@ async function mount(storage = memory(), replies = []) {
     canMove:()=>callbacks.canMove(),
     blockedInput:()=>callbacks.onInputBlocked(),
     fullscreen:async()=>{document.fullscreenElement=document.body;await document.emit('fullscreenchange');},
+    key:details=>document.emit('keydown',{key:' ',code:'Space',target:document.getElementById('boardCanvas'),...details}),
+    createElement:tag=>document.createElement(tag),
     reducedMotion:value=>{scene.drone.reducedMotion=value;scene.drone.running=false;callbacks.onDroneChange({...scene.drone});},
     async download() { const item = document.downloads.at(-1); return {name: item.name, text: await blobs.get(item.href).text()}; },
     async import(text, size = new TextEncoder().encode(text).length) {
@@ -202,15 +210,46 @@ test('drone control updates accessible state, protects the saved game and disabl
   const storage=memory(record(['e2e4','e7e5']));
   const app=await mount(storage),before=storage.raw();
   assert.equal(app.element('droneToggle').getAttribute('aria-pressed'),'true');
-  assert.equal(app.element('droneLabel').textContent,'Pause drone');
+  assert.equal(app.element('droneLabel').textContent,'Spacebar to Start/Stop Rotation');
   await app.click('droneToggle');
   assert.equal(app.element('droneToggle').getAttribute('aria-pressed'),'false');
-  assert.equal(app.element('droneLabel').textContent,'Start drone · 360°');
+  assert.equal(app.element('droneLabel').textContent,'Spacebar to Start/Stop Rotation');
   await app.click('droneToggle');assert.equal(app.scene.drone.running,true);
   app.reducedMotion(true);
   assert.equal(app.element('droneToggle').disabled,true);
-  assert.equal(app.element('droneLabel').textContent,'Drone slået fra');
+  assert.equal(app.element('droneLabel').textContent,'Rotation slået fra');
   assert.equal(storage.raw(),before);assert.equal(app.requests.length,0);
+});
+
+test('Space starts and stops rotation once per press without selecting a square, also in fullscreen',async()=>{
+  const app=await mount(),before=app.storage.raw();
+  const first=await app.key();
+  assert.equal(app.scene.drone.running,false);assert.equal(first.defaultPrevented,true);assert.equal(first.propagationStopped,true);
+  const held=await app.key({repeat:true});
+  assert.equal(held.defaultPrevented,true);assert.equal(app.scene.drone.running,false);
+  await app.key();assert.equal(app.scene.drone.running,true);
+  await app.fullscreen();
+  await app.key();assert.equal(app.scene.drone.running,false);
+  await app.key({code:''});assert.equal(app.scene.drone.running,true);
+  assert.equal(app.scene.state.selected,null);assert.equal(app.scene.state.moveLog.length,0);
+  assert.equal(app.storage.raw(),before);assert.equal(app.requests.length,0);
+});
+
+test('rotation shortcut leaves focused controls, editable content, modified keys and open dialogs alone',async()=>{
+  const app=await mount();
+  const input=app.createElement('div');input.setAttribute('contenteditable','true');
+  const textbox=app.createElement('div');textbox.setAttribute('role','textbox');
+  const targets=['button','input','textarea','select','a','summary'].map(tag=>app.createElement(tag)).concat(input,textbox);
+  for(const target of targets){const event=await app.key({target});assert.equal(event.defaultPrevented,false);assert.equal(app.scene.drone.running,true);}
+  for(const details of [{altKey:true},{ctrlKey:true},{metaKey:true},{shiftKey:true},{defaultPrevented:true},{key:'Enter',code:'Enter'}]){
+    await app.key(details);assert.equal(app.scene.drone.running,true);
+  }
+  for(const id of ['promotionModal','resetModal','drawModal','importModal','resumeModal']){
+    app.element(id).open=true;
+    assert.equal((await app.key()).defaultPrevented,false);assert.equal(app.scene.drone.running,true);
+    app.element(id).open=false;
+  }
+  app.reducedMotion(true);await app.key();assert.equal(app.scene.drone.running,false);
 });
 
 test('fullscreen exposes the pending resume choice, preserves a declined save, and enables moves after continuing',async()=>{

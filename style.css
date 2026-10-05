@@ -15,7 +15,7 @@ dialog{background:#29221a;border:1px solid #d4b37b66;border-radius:4px;color:var
 .board-toolbar{flex-wrap:wrap}.view-controls{display:flex;align-items:center;justify-content:flex-end;gap:20px;flex-wrap:wrap}.fullscreen-button{display:inline-flex;align-items:center;gap:7px;min-height:44px}.fullscreen-button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.fullscreen-button span{font-size:inherit;margin:0}.fullscreen-message{font-size:.8125rem;line-height:1.6;color:var(--gold);margin:0 0 16px}
 :root:fullscreen{overflow:hidden;background:var(--bg)}
 :root:fullscreen body{height:100dvh;overflow:hidden}
-:root:fullscreen .site-header,:root:fullscreen .site-footer,:root:fullscreen .panel,:root:fullscreen .board-heading,:root:fullscreen .play-toolbar,:root:fullscreen .resume-game,:root:fullscreen .board-toolbar,:root:fullscreen .fullscreen-message{display:none}
+:root:fullscreen .site-header,:root:fullscreen .site-footer,:root:fullscreen .panel,:root:fullscreen .board-heading,:root:fullscreen .resume-game,:root:fullscreen .board-toolbar,:root:fullscreen .fullscreen-message{display:none}
 :root:fullscreen .app{display:block;max-width:none;width:100%;height:100dvh;margin:0;padding:0}
 :root:fullscreen .game-area{height:100%;min-height:0}
 :root:fullscreen .stage{width:100%;height:100dvh;min-height:0;border:0;border-radius:0}
@@ -29,6 +29,10 @@ dialog{background:#29221a;border:1px solid #d4b37b66;border-radius:4px;color:var
 .drone-button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .drone-button[aria-pressed=true]{color:var(--gold);border-color:var(--gold);background:#d4b37b0c}
 .drone-button:not(:disabled):hover{background:#d4b37b18}
+:root:fullscreen .play-toolbar{position:fixed;top:22px;right:22px;z-index:2;display:block;margin:0;max-width:calc(100% - 44px)}
+:root:fullscreen .play-toolbar .view-modes,:root:fullscreen .play-toolbar .quick-play{display:none}
+:root:fullscreen .drone-button{background:#17130fe6;box-shadow:0 3px 18px #0004;white-space:normal;text-align:left}
+:root:fullscreen .drone-button:not(:disabled):hover{background:#29221af2}
 .quick-play{display:none;align-items:center;justify-content:space-between;gap:12px;font-size:.875rem;line-height:1.5}
 .quick-play .text-button{min-height:44px;font-size:.875rem;padding-inline:8px}
 .resume-game{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:18px;border:1px solid var(--line);background:var(--panel);margin-bottom:16px}

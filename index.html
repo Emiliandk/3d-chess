@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#17130f">
-  <meta name="application-version" content="2.3.1">
+  <meta name="application-version" content="2.3.2">
   <meta name="description" content="Prøv 3D Chess mod Stockfish. Drej brættet, vælg computerens søgning, og spil i dit eget tempo i varme biblioteksomgivelser.">
   <title>Chess</title>
   <link rel="stylesheet" href="./style.css">
@@ -31,7 +31,7 @@
           <button id="viewPlay" type="button" aria-pressed="false">Spilvisning</button>
           <button id="viewRoom" type="button" aria-pressed="true">Rumvisning</button>
         </div>
-        <button id="droneToggle" class="drone-button" type="button" aria-pressed="false" aria-describedby="drone-help" disabled><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg><span id="droneLabel">Start drone · 360°</span></button>
+        <button id="droneToggle" class="drone-button" type="button" aria-pressed="false" aria-keyshortcuts="Space" aria-describedby="drone-help" disabled><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg><span id="droneLabel">Spacebar to Start/Stop Rotation</span></button>
         <div class="quick-play"><span id="mobileStatus" role="status">Gør spillet klar…</span><button id="mobileUndo" class="text-button" type="button" disabled>Fortryd</button></div>
       </div>
       <div class="stage" id="stage">
@@ -47,9 +47,9 @@
         </div>
       </div>
       <p class="fullscreen-message" id="fullscreenMessage" role="status" hidden></p>
-      <p id="drone-help" class="sr-only">Droneflyvningen tager 90 sekunder pr. omgang rundt om brættet. Den stopper, når du bruger brættet, skifter visning eller nulstiller kameraet. Ved reduceret bevægelse er droneflyvningen slået fra.</p>
+      <p id="drone-help" class="sr-only">Tryk på mellemrumstasten for at starte eller stoppe rotationen, også i fuldskærm. Rotationen tager 90 sekunder pr. omgang rundt om brættet. Den stopper, når du bruger brættet, skifter visning eller nulstiller kameraet. Genvejen ændrer ikke betjeningen af felter, knapper og dialoger. Ved reduceret bevægelse er rotationen slået fra.</p>
       <p id="droneMessage" class="sr-only" role="status"></p>
-      <p id="keyboard-help" class="sr-only">På brættet: Brug piletaster til at vælge et felt, og Enter eller mellemrum til at vælge eller flytte en brik. Escape fjerner markeringen. Hold Skift og brug piletaster for at dreje kameraet. Plus og minus zoomer. R nulstiller visningen.</p>
+      <p id="keyboard-help" class="sr-only">På brættet: Brug piletaster til at vælge et felt og Enter til at vælge eller flytte en brik. Mellemrum starter eller stopper rotationen. Escape fjerner markeringen. Hold Skift og brug piletaster for at dreje kameraet. Plus og minus zoomer. R nulstiller visningen.</p>
       <p class="sr-only" id="squareAnnouncement" aria-live="polite"></p>
     </section>
     <aside class="panel" aria-labelledby="game-title">
