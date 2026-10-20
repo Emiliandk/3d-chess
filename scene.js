@@ -9,7 +9,6 @@ import {createPieceDrag} from './piece-drag.js';
 import {createCognacProps} from './cognac-props.js';
 import {createCognacRenderPass} from './cognac-render-pass.js';
 import {createFireplace} from './fireplace.js';
-import {createTablePedestal} from './table-pedestal.js';
 
 const PIECES = {p:'pawn',r:'rook',n:'knight',b:'bishop',q:'queen',k:'king'};
 const NAMES = {p:'bonde',r:'tårn',n:'springer',b:'løber',q:'dronning',k:'konge'};
@@ -34,7 +33,7 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
   controls.mouseButtons={LEFT:THREE.MOUSE.ROTATE,MIDDLE:THREE.MOUSE.DOLLY,RIGHT:THREE.MOUSE.ROTATE};
   controls.touches={ONE:THREE.TOUCH.ROTATE,TWO:THREE.TOUCH.DOLLY_ROTATE};
   let needsRender=true,disposed=false,ready=false,state=null,side='w',pieceDrag=null;
-  let tableProps=null,tablePedestal=null,cognacPass=null,fireplace=null,framingPoints=[];
+  let tableProps=null,cognacPass=null,fireplace=null,framingPoints=[];
   const reducedMotion=window.matchMedia('(prefers-reduced-motion: reduce)');
   const drone=createDroneFlight({camera,controls,
     fitOrbit:angles=>fitChessOrbit(camera,controls.target,{viewMode,framingPoints,...angles}),
@@ -103,13 +102,12 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
   function renderScene(){if(cognacPass)cognacPass.render(world,camera);else renderer.render(world,camera);}
   function frame(time=0){if(disposed)return;requestAnimationFrame(frame);const flying=ready&&drone.update(time,{hidden:document.hidden});if(document.hidden)return;if(!flying)controls.update();const fireChanged=ready&&fireplace?.update(time,camera,reducedMotion.matches);if(flying||fireChanged)needsRender=true;if(needsRender){renderScene();needsRender=false;}}frame();
   const materials={};
-  const api={resetView,setViewMode,getViewMode:()=>viewMode,startDrone:()=>{pieceDrag.cancel();if(ready)drone.start();},toggleDrone:()=>{pieceDrag.cancel();if(ready)drone.toggle();},pauseDrone,getDroneState:drone.getState,update(next){state=next;pieceDrag.reconcile();if(!ready)return;renderer.shadowMap.needsUpdate=true;for(let r=0;r<8;r++)for(let c=0;c<8;c++){const key=`${r},${c}`,p=state.board[r][c],old=pieceMeshes.get(key),signature=p?`${p.color}${p.type}`:'';if(old&&old.userData.signature!==signature){pieceRoot.remove(old);pieceMeshes.delete(key);}if(p&&!pieceMeshes.has(key)){const group=templates[p.type].clone(true);group.scale.set(1.208,1,1.208);group.position.copy(point(r,c,BOARD_SURFACE_Y));if(p.color==='b')group.rotation.y=Math.PI;group.userData.square={r,c};group.userData.signature=signature;group.traverse(n=>{if(n.isMesh){n.material=materials[p.color];n.castShadow=true;n.receiveShadow=true;}});const collar=new THREE.Mesh(new THREE.CylinderGeometry(p.type==='n'?.173:.205,p.type==='n'?.185:.21,.035,48),brass);collar.position.y=p.type==='n'?.384:.055;group.add(collar);pieceRoot.add(group);pieceMeshes.set(key,group);}}updateMarkers();announce();},dispose(){disposed=true;pieceDrag.dispose();drone.pause();for(const event of droneInputs)canvas.removeEventListener(event,pauseDrone,true);observer.disconnect();reducedMotion.removeEventListener('change',motionChanged);fireplace?.dispose();cognacPass?.dispose();tableProps?.dispose();tablePedestal?.dispose();controls.dispose();renderer.dispose();}};
+  const api={resetView,setViewMode,getViewMode:()=>viewMode,startDrone:()=>{pieceDrag.cancel();if(ready)drone.start();},toggleDrone:()=>{pieceDrag.cancel();if(ready)drone.toggle();},pauseDrone,getDroneState:drone.getState,update(next){state=next;pieceDrag.reconcile();if(!ready)return;renderer.shadowMap.needsUpdate=true;for(let r=0;r<8;r++)for(let c=0;c<8;c++){const key=`${r},${c}`,p=state.board[r][c],old=pieceMeshes.get(key),signature=p?`${p.color}${p.type}`:'';if(old&&old.userData.signature!==signature){pieceRoot.remove(old);pieceMeshes.delete(key);}if(p&&!pieceMeshes.has(key)){const group=templates[p.type].clone(true);group.scale.set(1.208,1,1.208);group.position.copy(point(r,c,BOARD_SURFACE_Y));if(p.color==='b')group.rotation.y=Math.PI;group.userData.square={r,c};group.userData.signature=signature;group.traverse(n=>{if(n.isMesh){n.material=materials[p.color];n.castShadow=true;n.receiveShadow=true;}});const collar=new THREE.Mesh(new THREE.CylinderGeometry(p.type==='n'?.173:.205,p.type==='n'?.185:.21,.035,48),brass);collar.position.y=p.type==='n'?.384:.055;group.add(collar);pieceRoot.add(group);pieceMeshes.set(key,group);}}updateMarkers();announce();},dispose(){disposed=true;pieceDrag.dispose();drone.pause();for(const event of droneInputs)canvas.removeEventListener(event,pauseDrone,true);observer.disconnect();reducedMotion.removeEventListener('change',motionChanged);fireplace?.dispose();cognacPass?.dispose();tableProps?.dispose();controls.dispose();renderer.dispose();}};
   try{
-    const [wood,rough,normal,panorama,bottleTexture,fireAtlas,pedestalWood,...models]=await Promise.all([
+    const [wood,rough,normal,panorama,bottleTexture,fireAtlas,...models]=await Promise.all([
       loader.loadAsync('./assets/wood_table_001_diff_1k.jpg'),loader.loadAsync('./assets/wood_table_001_rough_1k.jpg'),loader.loadAsync('./assets/wood_table_001_nor_gl_1k.jpg'),loader.loadAsync('./assets/library-panorama.png'),
       loader.loadAsync('./assets/cognac/gourry-bottle-reference.png'),
       loader.loadAsync('./assets/fireplace/natural-fire.webp').catch(()=>null),
-      loader.loadAsync('./assets/pedestal/walnut-sunburst.webp').catch(()=>null),
       ...Object.values(PIECES).map(name=>new GLTFLoader().loadAsync(`./assets/${name}.glb`))
     ]);
     wood.colorSpace=THREE.SRGBColorSpace;wood.anisotropy=8;wood.wrapS=wood.wrapT=THREE.RepeatWrapping;
@@ -127,9 +125,7 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
     const board=createBoard({walnut,brass,darkTrim,lightTile,darkTile});
     world.add(board.group);pickTargets.push(...board.squares);
     const tableMat=walnut.clone();const tableMap=wood.clone();tableMap.repeat.set(2,2);tableMap.needsUpdate=true;tableMat.map=tableMap;tableMat.color.set(0x76523a);tableMat.roughness=.64;box(16,.38,14,-.72,tableMat);
-    tablePedestal=createTablePedestal({woodTexture:pedestalWood||wood,brass});world.add(tablePedestal.group,tablePedestal.shadow);
-    pedestalWood?.dispose(); // The pedestal owns its cloned texture; the fallback remains shared.
-    tableProps=createCognacProps({bottleTexture});world.add(tableProps.group);framingPoints=[...tableProps.framingPoints,...tablePedestal.framingPoints];
+    tableProps=createCognacProps({bottleTexture});world.add(tableProps.group);framingPoints=tableProps.framingPoints;
     cognacPass=createCognacRenderPass(renderer,{shells:tableProps.shells});
     function label(text,x,z,rotation=0){const c=document.createElement('canvas');c.width=c.height=128;const ctx=c.getContext('2d');ctx.fillStyle='#d7b780';ctx.font='50px Georgia';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,64,66);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;const mesh=new THREE.Mesh(new THREE.PlaneGeometry(.31,.31),new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false}));mesh.rotation.set(-Math.PI/2,0,rotation);mesh.position.set(x,BOARD_SURFACE_Y+.003,z);world.add(mesh);}
     for(let i=0;i<8;i++){label('abcdefgh'[i],i-3.5,4.35);label('abcdefgh'[i],i-3.5,-4.35,Math.PI);label(String(8-i),-4.35,i-3.5);label(String(8-i),4.35,i-3.5,Math.PI);}
