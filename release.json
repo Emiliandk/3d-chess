@@ -1,5 +1,5 @@
 {
-  "version": "2.3.2",
-  "releasedOn": "2026-10-05",
-  "changes": ["Mellemrum starter og stopper rotation rundt om brættet", "Spacebar to Start/Stop Rotation er synlig i fuldskærm", "Enter vælger og flytter fortsat brikker med tastaturet"]
+  "version": "2.3.3",
+  "releasedOn": "2026-10-20",
+  "changes": ["Bordpladen bæres af en valnøddesokkel med trinvis fod og messingindlæg", "Soklens træmateriale er lavet med GPT Image Sunburst i max-kvalitet", "Rumvisningen indrammer bord og sokkel, mens spilvisningen bevarer brættets størrelse"]
 }

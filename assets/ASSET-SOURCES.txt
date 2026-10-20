@@ -29,3 +29,9 @@ The generated room excludes the original chessboard, table and pieces; these rem
 Reference direction: dark wood shelves, green marble fireplace, globe, brass lamp with black shade, tufted brown leather chair.
 Exact generation instructions: library-panorama-prompt.txt.
 No resizing or further image editing applied. Panoramic interpretation; in-scene seam and crop are not yet visually verified.
+
+TABLE PEDESTAL WALNUT
+File: pedestal/walnut-sunburst.webp. Generated 2026-10-20.
+Model: gpt-image-2.5-sunburst. Quality: max. One image, auto size.
+Actual image: 1254 × 1254, optimized to WebP for runtime use.
+See pedestal/README.txt for generation and geometry provenance.

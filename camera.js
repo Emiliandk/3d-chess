@@ -5,13 +5,13 @@ for(const x of [-4.84,4.84])for(const y of [-.51,1.60])for(const z of [-4.84,4.8
 
 // Both presets use the same perspective camera and free orbit controls. The
 // play preset reserves the viewport for the board; the room preset includes
-// the glasses and bottle. An explicit polar angle keeps a user's chosen
+// the tabletop, pedestal, glasses and bottle. An explicit polar angle keeps a user's chosen
 // elevation when the viewport changes (including browser fullscreen).
 export function fitChessView(camera,target,{viewMode='room',framingPoints=[],azimuth=.28,polar}={}){
   if(viewMode!=='play'&&viewMode!=='room')throw new RangeError('Unknown chess view mode');
   return fitBoardCamera(camera,target,{
     azimuth,
-    polar:polar??(viewMode==='play'?.62:.84),
+    polar:polar??(viewMode==='play'?.62:1.12),
     margin:viewMode==='play'?.92:.88,
     framingPoints:viewMode==='room'?framingPoints:[]
   });

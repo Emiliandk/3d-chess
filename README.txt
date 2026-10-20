@@ -88,6 +88,18 @@ KONTROL UDFØRT 8. SEPTEMBER 2026
 - Et levende API-kald ved søgedybde 3 gav et lovligt svar ved den valgte dybde.
 - Den åbne grafikkontrol nedenfor gælder fortsat denne ændring.
 
+VERSION 2.3.3 · 20. OKTOBER 2026
+------------------------------
+- Bordpladen bæres af en central valnøddesokkel med affasede hjørner,
+  trinvis fod, tilbagetrukket sarg og smalle messingindlæg.
+- Ét træmateriale er genereret med gpt-image-2.5-sunburst, kvalitet max,
+  via den eksisterende private forbindelse og gemt lokalt som WebP.
+  Spillet laver ingen billed-API-kald og har ingen nye credentials.
+- Rumvisningen viser hele bordet og soklen fra en lavere vinkel. Den frie
+  rotation og Spilvisning bevares; soklen er ikke et inputmål for brikvalg.
+- 109 automatiske tests består, herunder soklens geometri og kameraets
+  indramning gennem 360 grader ved flere desktopformater.
+
 VERSION 2.3.2 · 5. OKTOBER 2026
 -----------------------------
 - Mellemrumstasten starter og stopper den eksisterende 360°-rotation.
