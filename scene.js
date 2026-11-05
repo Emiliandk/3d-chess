@@ -61,18 +61,48 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
   }
   resetView();
   const observer=new ResizeObserver(resize);observer.observe(canvas.parentElement);
-  const hemi=new THREE.HemisphereLight(0xffedd0,0x3d2c23,2);world.add(hemi);
-  const key=new THREE.DirectionalLight(0xffe1b2,3.7);key.position.set(-6,12,7);key.castShadow=true;
+  const hemi=new THREE.HemisphereLight(0xfff1dc,0x3d3028,2);world.add(hemi);
+  const key=new THREE.DirectionalLight(0xffe9cd,3.4);key.position.set(-6,12,7);key.castShadow=true;
   key.shadow.mapSize.set(2048,2048);key.shadow.camera.left=-9;key.shadow.camera.right=9;key.shadow.camera.top=9;key.shadow.camera.bottom=-9;key.shadow.camera.near=.5;key.shadow.camera.far=35;key.shadow.normalBias=.02;key.shadow.bias=-.0001;key.shadow.radius=3;world.add(key);
-  const fill=new THREE.DirectionalLight(0xe2eaf6,1.3);fill.position.set(8,5,-6);world.add(fill);
-  const rim=new THREE.DirectionalLight(0xffc279,1.7);rim.position.set(-3,6,-8);world.add(rim);
+  const fill=new THREE.DirectionalLight(0xe6edf2,1.45);fill.position.set(8,5,-6);world.add(fill);
+  const rim=new THREE.DirectionalLight(0xffd29a,1.7);rim.position.set(-3,6,-8);world.add(rim);
   function box(w,h,d,y,material){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);m.position.y=y;m.receiveShadow=true;m.castShadow=true;world.add(m);return m;}
-  const brass=new THREE.MeshStandardMaterial({color:0xb99753,metalness:.78,roughness:.3});
-  const markerMats={selected:new THREE.MeshBasicMaterial({color:0xf5ca71}),legal:new THREE.MeshBasicMaterial({color:0x9eccac}),last:new THREE.MeshBasicMaterial({color:0xd4a65f,transparent:true,opacity:.18,depthWrite:false}),check:new THREE.MeshBasicMaterial({color:0xea7467}),focus:new THREE.MeshBasicMaterial({color:0xffffff})};
+  const brass=new THREE.MeshStandardMaterial({color:0xb6975d,metalness:.78,roughness:.34});
+  const markerMats={
+    selected:new THREE.MeshBasicMaterial({color:0xffd77d,toneMapped:false}),
+    legal:new THREE.MeshBasicMaterial({color:0x9ee7c3,toneMapped:false}),
+    last:new THREE.MeshBasicMaterial({color:0xf0b95f,transparent:true,opacity:.26,depthWrite:false}),
+    check:new THREE.MeshBasicMaterial({color:0xff927f,toneMapped:false}),
+    focus:new THREE.MeshBasicMaterial({color:0xfff9e9,toneMapped:false}),
+    outline:new THREE.MeshBasicMaterial({color:0x261b15,toneMapped:false})
+  };
   const markerRoot=new THREE.Group();world.add(markerRoot);
-  const ringGeo=new THREE.RingGeometry(.38,.415,48),dotGeo=new THREE.CircleGeometry(.105,32),lastGeo=new THREE.PlaneGeometry(.96,.96);
+  const ringGeo=new THREE.RingGeometry(.367,.421,48),ringOutline=new THREE.RingGeometry(.35,.438,48);
+  const dotGeo=new THREE.CircleGeometry(.103,32),dotOutline=new THREE.CircleGeometry(.132,32);
+  const lastGeo=new THREE.PlaneGeometry(.96,.96);
+  function focusFrame(outer,inner){
+    const shape=new THREE.Shape().moveTo(-outer,-outer).lineTo(outer,-outer).lineTo(outer,outer).lineTo(-outer,outer).closePath();
+    const hole=new THREE.Path().moveTo(-inner,-inner).lineTo(-inner,inner).lineTo(inner,inner).lineTo(inner,-inner).closePath();
+    shape.holes.push(hole);
+    return new THREE.ShapeGeometry(shape);
+  }
+  const focusGeo=focusFrame(.473,.45),focusOutline=focusFrame(.486,.44);
   function marker(geo,mat,r,c,y=BOARD_SURFACE_Y+.006){const m=new THREE.Mesh(geo,mat);m.rotation.x=-Math.PI/2;m.position.copy(point(r,c,y));markerRoot.add(m);}
-  function updateMarkers(){markerRoot.clear();if(!state)return;if(state.lastMove)for(const p of [state.lastMove.from,state.lastMove.to])marker(lastGeo,markerMats.last,p.r,p.c,BOARD_SURFACE_Y+.003);if(state.selected)marker(ringGeo,markerMats.selected,state.selected.r,state.selected.c,BOARD_SURFACE_Y+.006);for(const p of state.legalTargets)marker(p.capture?ringGeo:dotGeo,markerMats.legal,p.r,p.c,BOARD_SURFACE_Y+.008);const target=pieceDrag?.getTarget();if(target)marker(ringGeo,markerMats.legal,target.r,target.c,BOARD_SURFACE_Y+.012);if(state.checkSquare)marker(ringGeo,markerMats.check,state.checkSquare.r,state.checkSquare.c,BOARD_SURFACE_Y+.011);if(keyboardVisible)marker(ringGeo,markerMats.focus,keyboardSquare.r,keyboardSquare.c,BOARD_SURFACE_Y+.015);needsRender=true;}
+  function outlinedMarker(geo,outline,material,{r,c},height){
+    marker(outline,markerMats.outline,r,c,BOARD_SURFACE_Y+height);
+    marker(geo,material,r,c,BOARD_SURFACE_Y+height+.001);
+  }
+  function updateMarkers(){
+    markerRoot.clear();if(!state)return;
+    if(state.lastMove)for(const p of [state.lastMove.from,state.lastMove.to])marker(lastGeo,markerMats.last,p.r,p.c,BOARD_SURFACE_Y+.003);
+    if(state.selected)outlinedMarker(ringGeo,ringOutline,markerMats.selected,state.selected,.006);
+    for(const p of state.legalTargets)outlinedMarker(p.capture?ringGeo:dotGeo,p.capture?ringOutline:dotOutline,markerMats.legal,p,.008);
+    if(state.checkSquare)outlinedMarker(ringGeo,ringOutline,markerMats.check,state.checkSquare,.011);
+    const target=pieceDrag?.getTarget();
+    if(target)outlinedMarker(ringGeo,ringOutline,markerMats.legal,target,.013);
+    if(keyboardVisible)outlinedMarker(focusGeo,focusOutline,markerMats.focus,keyboardSquare,.016);
+    needsRender=true;
+  }
   function squareDescription(r,c){const piece=state?.board[r]?.[c];return `${'abcdefgh'[c]}${8-r}: ${piece?(piece.color==='w'?'hvid':'sort')+' '+NAMES[piece.type]:'tomt felt'}`;}
   function announce(){canvas.setAttribute('aria-label','3D-skakbræt. '+squareDescription(keyboardSquare.r,keyboardSquare.c));onSquareFocus?.(squareDescription(keyboardSquare.r,keyboardSquare.c));}
   function pick(e){const rect=canvas.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);return pickChessSquare({raycaster,pointer,camera,squares:pickTargets,pieces:pieceRoot.children,width:rect.width,height:rect.height});}
@@ -104,33 +134,57 @@ export async function createChessScene({canvas,onSquare,onReady,onError,onCamera
   const materials={};
   const api={resetView,setViewMode,getViewMode:()=>viewMode,startDrone:()=>{pieceDrag.cancel();if(ready)drone.start();},toggleDrone:()=>{pieceDrag.cancel();if(ready)drone.toggle();},pauseDrone,getDroneState:drone.getState,update(next){state=next;pieceDrag.reconcile();if(!ready)return;renderer.shadowMap.needsUpdate=true;for(let r=0;r<8;r++)for(let c=0;c<8;c++){const key=`${r},${c}`,p=state.board[r][c],old=pieceMeshes.get(key),signature=p?`${p.color}${p.type}`:'';if(old&&old.userData.signature!==signature){pieceRoot.remove(old);pieceMeshes.delete(key);}if(p&&!pieceMeshes.has(key)){const group=templates[p.type].clone(true);group.scale.set(1.208,1,1.208);group.position.copy(point(r,c,BOARD_SURFACE_Y));if(p.color==='b')group.rotation.y=Math.PI;group.userData.square={r,c};group.userData.signature=signature;group.traverse(n=>{if(n.isMesh){n.material=materials[p.color];n.castShadow=true;n.receiveShadow=true;}});const collar=new THREE.Mesh(new THREE.CylinderGeometry(p.type==='n'?.173:.205,p.type==='n'?.185:.21,.035,48),brass);collar.position.y=p.type==='n'?.384:.055;group.add(collar);pieceRoot.add(group);pieceMeshes.set(key,group);}}updateMarkers();announce();},dispose(){disposed=true;pieceDrag.dispose();drone.pause();for(const event of droneInputs)canvas.removeEventListener(event,pauseDrone,true);observer.disconnect();reducedMotion.removeEventListener('change',motionChanged);fireplace?.dispose();cognacPass?.dispose();tableProps?.dispose();controls.dispose();renderer.dispose();}};
   try{
-    const [wood,rough,normal,panorama,bottleTexture,fireAtlas,...models]=await Promise.all([
-      loader.loadAsync('./assets/wood_table_001_diff_1k.jpg'),loader.loadAsync('./assets/wood_table_001_rough_1k.jpg'),loader.loadAsync('./assets/wood_table_001_nor_gl_1k.jpg'),loader.loadAsync('./assets/library-panorama.png'),
-      loader.loadAsync('./assets/cognac/gourry-bottle-reference.png'),
+    const [frameWood,darkWood,lightWood,blackWood,panorama,bottleTexture,fireAtlas,...models]=await Promise.all([
+      loader.loadAsync('./assets/sunburst/walnut.webp'),
+      loader.loadAsync('./assets/sunburst/walnut-square.webp'),
+      loader.loadAsync('./assets/sunburst/boxwood.webp'),
+      loader.loadAsync('./assets/sunburst/ebonized-walnut.webp'),
+      loader.loadAsync('./assets/sunburst/library.webp'),
+      loader.loadAsync('./assets/cognac/gourry-bottle-reference.webp'),
       loader.loadAsync('./assets/fireplace/natural-fire.webp').catch(()=>null),
       ...Object.values(PIECES).map(name=>new GLTFLoader().loadAsync(`./assets/${name}.glb`))
     ]);
-    wood.colorSpace=THREE.SRGBColorSpace;wood.anisotropy=8;wood.wrapS=wood.wrapT=THREE.RepeatWrapping;
-    for(const t of [rough,normal]){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;}
+    for(const texture of [frameWood,darkWood,lightWood,blackWood]){
+      texture.colorSpace=THREE.SRGBColorSpace;
+      texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
+      texture.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+    }
     panorama.mapping=THREE.EquirectangularReflectionMapping;panorama.colorSpace=THREE.SRGBColorSpace;
     // Align the fireplace/globe/chair side of the room with the initial board view.
     world.background=panorama;world.backgroundBlurriness=.045;world.backgroundIntensity=.82;world.backgroundRotation.y=1.5;
     const pmrem=new THREE.PMREMGenerator(renderer);world.environment=pmrem.fromEquirectangular(panorama).texture;world.environmentIntensity=.5;world.environmentRotation.copy(world.backgroundRotation);pmrem.dispose();
     fireplace=createFireplace({atlas:fireAtlas,environment:world.environment,rotation:world.backgroundRotation.y,intensity:world.backgroundIntensity,blur:world.backgroundBlurriness});
     world.add(fireplace.mesh,fireplace.reflection);
-    const walnut=new THREE.MeshPhysicalMaterial({color:0x9e7655,map:wood,roughnessMap:rough,roughness:.55,normalMap:normal,normalScale:new THREE.Vector2(.13,.13),clearcoat:.5,clearcoatRoughness:.27});
-    const darkTile=walnut.clone();darkTile.color.set(0x9f7851);darkTile.roughness=.4;
-    const lightTile=new THREE.MeshPhysicalMaterial({color:0xf0d5a3,roughness:.42,normalMap:normal,normalScale:new THREE.Vector2(.035,.035),clearcoat:.35,clearcoatRoughness:.3});
-    const darkTrim=new THREE.MeshStandardMaterial({color:0x1d1008,roughness:.35});
+    const walnut=new THREE.MeshPhysicalMaterial({color:0xe4d1bc,map:frameWood,roughness:.54,clearcoat:.42,clearcoatRoughness:.31});
+    const darkTile=new THREE.MeshPhysicalMaterial({color:0x987a62,map:darkWood,roughness:.44,clearcoat:.35,clearcoatRoughness:.32});
+    const lightTile=new THREE.MeshPhysicalMaterial({color:0xf4f3f1,map:lightWood,roughness:.46,clearcoat:.3,clearcoatRoughness:.34});
+    const darkTrim=new THREE.MeshStandardMaterial({map:blackWood,roughness:.42});
     const board=createBoard({walnut,brass,darkTrim,lightTile,darkTile});
     world.add(board.group);pickTargets.push(...board.squares);
-    const tableMat=walnut.clone();const tableMap=wood.clone();tableMap.repeat.set(2,2);tableMap.needsUpdate=true;tableMat.map=tableMap;tableMat.color.set(0x76523a);tableMat.roughness=.64;box(16,.38,14,-.72,tableMat);
+    const tableMat=walnut.clone();
+    const tableMap=frameWood.clone();tableMap.repeat.set(2,2);tableMap.needsUpdate=true;
+    tableMat.map=tableMap;tableMat.color.set(0xac927d);tableMat.roughness=.65;tableMat.clearcoat=.22;
+    box(16,.38,14,-.72,tableMat);
     tableProps=createCognacProps({bottleTexture});world.add(tableProps.group);framingPoints=tableProps.framingPoints;
     cognacPass=createCognacRenderPass(renderer,{shells:tableProps.shells});
-    function label(text,x,z,rotation=0){const c=document.createElement('canvas');c.width=c.height=128;const ctx=c.getContext('2d');ctx.fillStyle='#d7b780';ctx.font='50px Georgia';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,64,66);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;const mesh=new THREE.Mesh(new THREE.PlaneGeometry(.31,.31),new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false}));mesh.rotation.set(-Math.PI/2,0,rotation);mesh.position.set(x,BOARD_SURFACE_Y+.003,z);world.add(mesh);}
+    const labelGeometry=new THREE.PlaneGeometry(.34,.34);
+    const labelMaterials=new Map();
+    function label(text,x,z,rotation=0){
+      if(!labelMaterials.has(text)){
+        const c=document.createElement('canvas');c.width=c.height=128;
+        const ctx=c.getContext('2d');
+        ctx.font='bold 54px Georgia';ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.strokeStyle='#302017';ctx.lineWidth=5;ctx.lineJoin='round';ctx.strokeText(text,64,66);
+        ctx.fillStyle='#f4dfac';ctx.fillText(text,64,66);
+        const map=new THREE.CanvasTexture(c);map.colorSpace=THREE.SRGBColorSpace;
+        labelMaterials.set(text,new THREE.MeshBasicMaterial({map,transparent:true,depthWrite:false,toneMapped:false}));
+      }
+      const mesh=new THREE.Mesh(labelGeometry,labelMaterials.get(text));
+      mesh.rotation.set(-Math.PI/2,0,rotation);mesh.position.set(x,BOARD_SURFACE_Y+.003,z);world.add(mesh);
+    }
     for(let i=0;i<8;i++){label('abcdefgh'[i],i-3.5,4.35);label('abcdefgh'[i],i-3.5,-4.35,Math.PI);label(String(8-i),-4.35,i-3.5);label(String(8-i),4.35,i-3.5,Math.PI);}
-    materials.w=new THREE.MeshPhysicalMaterial({color:0xf0d9ad,roughness:.32,clearcoat:.55,clearcoatRoughness:.2,metalness:.06});
-    materials.b=new THREE.MeshPhysicalMaterial({color:0x55412c,map:wood,roughness:.3,clearcoat:.62,clearcoatRoughness:.2,metalness:.06,normalMap:normal,normalScale:new THREE.Vector2(.035,.035)});
+    materials.w=new THREE.MeshPhysicalMaterial({color:0xfff9ef,map:lightWood,roughness:.32,clearcoat:.52,clearcoatRoughness:.22});
+    materials.b=new THREE.MeshPhysicalMaterial({map:blackWood,roughness:.31,clearcoat:.58,clearcoatRoughness:.23});
     Object.keys(PIECES).forEach((type,i)=>templates[type]=models[i].scene);
     renderer.shadowMap.needsUpdate=true;ready=true;resetView();if(state)api.update(state);needsRender=true;renderScene();onReady?.();
   }catch(error){onError?.(error);throw error;}

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#17130f">
-  <meta name="application-version" content="2.3.2">
+  <meta name="theme-color" content="#171512">
+  <meta name="application-version" content="2.3.4">
   <meta name="description" content="Prøv 3D Chess mod Stockfish. Drej brættet, vælg computerens søgning, og spil i dit eget tempo i varme biblioteksomgivelser.">
   <title>Chess</title>
   <link rel="stylesheet" href="./style.css">
@@ -14,7 +14,7 @@
   <header class="site-header">
     <a class="brand" href="https://emilian.dk/" aria-label="Til Emilians portfolio"><span class="brand-initial">E.</span><span>EMILIAN<span class="brand-sub">3D CHESS</span></span></a>
     <p class="header-note">Find din vinkel. Gør dit træk.</p>
-    <a class="portfolio-link" href="https://emilian.dk/">Til portfolio <span aria-hidden="true">↗</span></a>
+    <a class="portfolio-link" href="https://emilian.dk/">Til portfolio <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7 17 17 7M8 7h9v9"/></svg></a>
   </header>
   <main class="app">
     <section class="game-area" aria-labelledby="board-title">
@@ -28,19 +28,19 @@
           <button id="viewPlay" type="button" aria-pressed="false">Spilvisning</button>
           <button id="viewRoom" type="button" aria-pressed="true">Rumvisning</button>
         </div>
-        <button id="droneToggle" class="drone-button" type="button" aria-pressed="false" aria-keyshortcuts="Space" aria-describedby="drone-help" disabled><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg><span id="droneLabel">Spacebar to Start/Stop Rotation</span></button>
+        <button id="droneToggle" class="drone-button" type="button" aria-pressed="false" aria-keyshortcuts="Space" aria-describedby="drone-help" disabled><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg><span id="droneLabel">Spacebar to Start/Stop Rotation</span></button>
         <div class="quick-play"><span id="mobileStatus" role="status">Gør spillet klar…</span><button id="mobileUndo" class="text-button" type="button" disabled>Fortryd</button></div>
       </div>
       <div class="stage" id="stage">
         <canvas id="boardCanvas" tabindex="0" role="application" aria-label="3D-skakbræt" aria-describedby="board-help keyboard-help"></canvas>
-        <div class="loading" id="loading" role="status"><span class="loading-mark" aria-hidden="true">♔</span><p id="loadingText">Sætter brikkerne på plads…</p><button id="reloadScene" class="button secondary" hidden>Prøv igen</button></div>
+        <div class="loading" id="loading" role="status"><svg class="icon loading-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3v5m-2.5-2.5h5M9 16l-3.1-4.7a2.6 2.6 0 0 1 4.4-2.7L12 11l1.7-2.4a2.6 2.6 0 0 1 4.4 2.7L15 16m-6 0h6l2 4H7l2-4Z"/></svg><p id="loadingText">Sætter brikkerne på plads…</p><button id="reloadScene" class="button secondary" hidden>Prøv igen</button></div>
         <div class="scene-caption" aria-hidden="true"><span id="viewSide">HVIDS SIDE</span><span>VALNØD & MESSING</span></div>
       </div>
       <div class="board-toolbar">
-        <p id="board-help"><span class="mouse-mark" aria-hidden="true">↔</span> Træk en brik til et lovligt felt, eller klik på brik og felt <span class="separator">·</span> Træk på et tomt område, eller brug højre museknap for at dreje <span class="separator">·</span> Rul for at zoome</p>
+        <p id="board-help"><svg class="icon mouse-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 12h18m-4-4 4 4-4 4M7 8l-4 4 4 4"/></svg> Træk en brik til et lovligt felt, eller klik på brik og felt <span class="separator">·</span> Træk på et tomt område, eller brug højre museknap for at dreje <span class="separator">·</span> Rul for at zoome</p>
         <div class="view-controls">
-          <button class="text-button fullscreen-button" id="fullscreenToggle" type="button" aria-pressed="false" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5" /></svg><span id="fullscreenLabel">Fuldskærm</span></button>
-          <button class="text-button" id="resetView"><span aria-hidden="true">↺</span> Nulstil visning</button>
+          <button class="text-button view-button" id="fullscreenToggle" type="button" aria-pressed="false" hidden><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg><span id="fullscreenLabel">Fuldskærm</span></button>
+          <button class="text-button view-button" id="resetView" type="button"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5"/></svg> Nulstil visning</button>
         </div>
       </div>
       <p class="fullscreen-message" id="fullscreenMessage" role="status" hidden></p>
@@ -50,7 +50,7 @@
       <p class="sr-only" id="squareAnnouncement" aria-live="polite"></p>
     </section>
     <aside class="panel" aria-labelledby="game-title">
-      <div class="panel-heading"><div><p class="eyebrow">MOD COMPUTEREN</p><h2 id="game-title">Dit parti</h2></div><span class="piece-emblem" aria-hidden="true">♞</span></div>
+      <div class="panel-heading"><div><p class="eyebrow">MOD COMPUTEREN</p><h2 id="game-title">Dit parti</h2></div><span class="piece-emblem" aria-hidden="true"><svg class="icon" viewBox="0 0 24 24" focusable="false"><path d="M8 17c0-3 1.5-5 4-7l-3 2H5l-1-2 5-4V3l3 2c4 .4 7 4.4 7 9v3m-11 0h11l1 4H7l1-4Z"/><path d="M9 8h.1"/></svg></span></div>
       <div class="status" id="status" role="status"><span class="status-dot" aria-hidden="true"></span><span id="statusText">Gør spillet klar…</span></div>
       <div class="settings">
         <label for="humanColor">Du spiller som</label>
@@ -59,7 +59,7 @@
         <select id="skillLevel" aria-describedby="skillHelp"><option value="3">1 · Alan Turing</option><option value="6">2 · Carl Friedrich Gauss</option><option value="9">3 · Leonardo da Vinci</option><option value="12">4 · Albert Einstein</option><option value="15">5 · Isaac Newton</option><option value="18">6 · John von Neumann</option></select>
         <p class="settings-help" id="skillHelp">På højere niveauer overvejer computeren sine træk grundigere og bliver sværere at slå. Selv på laveste niveau kan den være en stærk modstander.</p>
       </div>
-      <div class="controls"><button class="button primary" id="newGame">Nyt spil <span aria-hidden="true">→</span></button><button class="button secondary" id="undo" disabled>Fortryd mit træk</button></div>
+      <div class="controls"><button class="button primary" id="newGame">Nyt spil <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12h16m-6-6 6 6-6 6"/></svg></button><button class="button secondary" id="undo" disabled>Fortryd mit træk</button></div>
       <p class="save-message" id="saveMessage" role="status">Dit parti gemmes automatisk i denne browser.</p>
       <details class="game-backup">
         <summary>Backup af dit parti</summary>

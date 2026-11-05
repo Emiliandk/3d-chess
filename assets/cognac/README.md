@@ -6,7 +6,8 @@ The two reference photographs were supplied by Emilian for this scene:
 - `riedel-glass-reference.jpeg`: unchanged 250 × 500 reference for the tall-stem tulip glass.
 
 Editable geometry and materials live in `../../cognac-props.js`. The bottle label
-and shoulder seal sample UV windows of the original PNG; no branding is redrawn.
+and shoulder seal sample the original photograph through a lossless WebP copy.
+The runtime copy preserves the PNG’s dimensions and decoded pixels.
 The JPEG is the retained shape reference and is not downloaded during gameplay.
 
 The glasses sit at each player's right, diagonally opposite one another. The

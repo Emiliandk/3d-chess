@@ -29,3 +29,13 @@ The generated room excludes the original chessboard, table and pieces; these rem
 Reference direction: dark wood shelves, green marble fireplace, globe, brass lamp with black shade, tufted brown leather chair.
 Exact generation instructions: library-panorama-prompt.txt.
 No resizing or further image editing applied. Panoramic interpretation; in-scene seam and crop are not yet visually verified.
+
+SUNBURST RUNTIME MATERIALS
+Generated with gpt-image-2.6-sunburst, quality max.
+The 1254 x 1254 wood sheet was split into walnut, walnut square, boxwood and
+ebonized walnut. The cropped, tiled WebP textures retain the generated grain.
+library.webp is a retouch of the 1774 x 887 library panorama. The wrap seam was
+blended and the source firebox and reflection cores were retained to register
+with the existing animated fireplace. Both room lighting and the backdrop
+sample this WebP. The source panorama and the original Poly Haven maps remain
+available as references.
